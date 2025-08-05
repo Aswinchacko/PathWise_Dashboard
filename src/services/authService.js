@@ -45,6 +45,50 @@ class AuthService {
     }
   }
 
+  // GitHub OAuth login
+  async githubLogin(code) {
+    const response = await fetch(`${API_BASE_URL}/github`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    })
+    
+    const data = await response.json()
+    
+    if (response.ok) {
+      // Store token and user data
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      return data
+    } else {
+      throw new Error(data.message || 'GitHub login failed')
+    }
+  }
+
+  // LinkedIn OAuth login
+  async linkedinLogin(code) {
+    const response = await fetch(`${API_BASE_URL}/linkedin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    })
+    
+    const data = await response.json()
+    
+    if (response.ok) {
+      // Store token and user data
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      return data
+    } else {
+      throw new Error(data.message || 'LinkedIn login failed')
+    }
+  }
+
   // Register user
   async register(firstName, lastName, email, password) {
     const response = await fetch(`${API_BASE_URL}/register`, {

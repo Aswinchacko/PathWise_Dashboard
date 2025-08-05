@@ -13,6 +13,8 @@ import Community from './pages/Community'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import GitHubCallback from './pages/GitHubCallback'
+import LinkedInCallback from './pages/LinkedInCallback'
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
@@ -22,6 +24,8 @@ function App() {
       {/* Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/auth/github/callback" element={<GitHubCallback />} />
+      <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
       
       {/* Protected Main Routes */}
       <Route path="/" element={

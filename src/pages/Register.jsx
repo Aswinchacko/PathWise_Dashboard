@@ -167,8 +167,37 @@ const Register = () => {
   }
 
   const handleSocialRegister = (provider) => {
-    // Handle social registration logic here
-    console.log(`Registering with ${provider}`)
+    if (provider === 'github') {
+      handleGitHubRegister()
+    } else if (provider === 'linkedin') {
+      handleLinkedInRegister()
+    } else {
+      console.log(`Registering with ${provider}`)
+    }
+  }
+
+  const handleGitHubRegister = () => {
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'your_github_client_id_here'
+    const redirectUri = `${window.location.origin}/auth/github/callback`
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`
+    
+    // Store the current URL to redirect back after GitHub auth
+    localStorage.setItem('github_redirect', window.location.pathname)
+    
+    // Redirect to GitHub OAuth
+    window.location.href = githubAuthUrl
+  }
+
+  const handleLinkedInRegister = () => {
+    const clientId = import.meta.env.VITE_LINKEDIN_CLIENT_ID || 'your_linkedin_client_id_here'
+    const redirectUri = `${window.location.origin}/auth/linkedin/callback`
+    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=r_liteprofile%20r_emailaddress`
+    
+    // Store the current URL to redirect back after LinkedIn auth
+    localStorage.setItem('linkedin_redirect', window.location.pathname)
+    
+    // Redirect to LinkedIn OAuth
+    window.location.href = linkedinAuthUrl
   }
 
   const passwordStrength = () => {

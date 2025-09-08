@@ -30,16 +30,20 @@ const LinkedInCallback = () => {
         }
 
         // Call backend with the authorization code
-        await authService.linkedinLogin(code)
+        const result = await authService.linkedinLogin(code)
         
         setStatus('success')
         setMessage('LinkedIn login successful! Redirecting...')
 
-        // Redirect to dashboard or stored redirect path
+        // Check if user is admin and redirect accordingly
         setTimeout(() => {
-          const redirectPath = localStorage.getItem('linkedin_redirect') || '/dashboard'
           localStorage.removeItem('linkedin_redirect')
-          navigate(redirectPath)
+          if (result.user.isAdmin) {
+            navigate('/admin')
+          } else {
+            const redirectPath = localStorage.getItem('linkedin_redirect') || '/dashboard'
+            navigate(redirectPath)
+          }
         }, 2000)
 
       } catch (error) {

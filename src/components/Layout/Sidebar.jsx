@@ -13,22 +13,27 @@ import {
   Briefcase,
   Upload,
   Globe,
-  FolderOpen
+  FolderOpen,
+  Shield
 } from 'lucide-react'
 import './Sidebar.css'
+import authService from '../../services/authService'
 
 const Sidebar = ({ collapsed, setCollapsed }) => {
   const location = useLocation()
+  const isAdmin = authService.isAdmin()
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/roadmap', icon: Target, label: 'Roadmap' },
     { path: '/projects', icon: FolderOpen, label: 'Projects' },
+    { path: '/resume-parser', icon: Upload, label: 'Resume Parser' },
     { path: '/mentors', icon: Users, label: 'Mentors' },
     { path: '/jobs', icon: Briefcase, label: 'Jobs' },
     { path: '/chatbot', icon: MessageCircle, label: 'Chatbot' },
     { path: '/resources', icon: FileText, label: 'Resources' },
     { path: '/community', icon: Globe, label: 'Community' },
+    ...(isAdmin ? [{ path: '/admin', icon: Shield, label: 'Admin Panel' }] : []),
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]
 

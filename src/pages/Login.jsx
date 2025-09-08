@@ -32,7 +32,11 @@ const Login = () => {
   // Redirect if already authenticated
   React.useEffect(() => {
     if (authService.isAuthenticated()) {
-      navigate('/dashboard')
+      if (authService.isAdmin()) {
+        navigate('/admin')
+      } else {
+        navigate('/dashboard')
+      }
     }
   }, [navigate])
 
@@ -78,12 +82,16 @@ const Login = () => {
     setErrors({})
     
     try {
-      await authService.googleLogin(response.credential)
+      const result = await authService.googleLogin(response.credential)
       setIsSuccess(true)
       
-      // Redirect to dashboard after successful login
+      // Check if user is admin and redirect accordingly
       setTimeout(() => {
-        navigate('/dashboard')
+        if (result.user.isAdmin) {
+          navigate('/admin')
+        } else {
+          navigate('/dashboard')
+        }
       }, 1000)
     } catch (error) {
       console.error('Google login error:', error)
@@ -137,12 +145,16 @@ const Login = () => {
     setErrors({})
     
     try {
-      await authService.login(formData.email, formData.password)
+      const result = await authService.login(formData.email, formData.password)
       setIsSuccess(true)
       
-      // Redirect to dashboard after successful login
+      // Check if user is admin and redirect accordingly
       setTimeout(() => {
-        navigate('/dashboard')
+        if (result.user.isAdmin) {
+          navigate('/admin')
+        } else {
+          navigate('/dashboard')
+        }
       }, 1000)
     } catch (error) {
       console.error('Login error:', error)

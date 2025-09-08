@@ -1,0 +1,159 @@
+.resume-upload-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.resume-upload-dropzone {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+  position: relative;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resume-upload-dropzone:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.resume-upload-dropzone.drag-over {
+  border-color: #3b82f6;
+  background: #dbeafe;
+  transform: scale(1.02);
+}
+
+.resume-upload-dropzone.uploading {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.upload-icon {
+  width: 3rem;
+  height: 3rem;
+  color: #6b7280;
+  transition: all 0.3s ease;
+}
+
+.upload-icon.success {
+  color: #10b981;
+}
+
+.upload-icon.error {
+  color: #ef4444;
+}
+
+.upload-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.upload-content h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.upload-content p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.file-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.file-info h3 {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #111827;
+  word-break: break-all;
+  max-width: 100%;
+}
+
+.success-message {
+  color: #10b981 !important;
+  font-weight: 500;
+}
+
+.error-message {
+  color: #ef4444 !important;
+  font-weight: 500;
+}
+
+.supported-formats {
+  margin-top: 0.5rem;
+}
+
+.supported-formats p {
+  font-size: 0.75rem;
+  margin: 0.25rem 0;
+}
+
+.remove-file-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6b7280;
+}
+
+.remove-file-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .resume-upload-dropzone {
+    padding: 1.5rem;
+    min-height: 150px;
+  }
+  
+  .upload-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  
+  .upload-content h3 {
+    font-size: 1.125rem;
+  }
+}

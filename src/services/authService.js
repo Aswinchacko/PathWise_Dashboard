@@ -185,6 +185,12 @@ class AuthService {
   isAuthenticated() {
     return !!this.getToken()
   }
+
+  // Check if user is admin
+  isAdmin() {
+    const user = this.getCurrentUser()
+    return user && (user.isAdmin === 'true' || user.isAdmin === true)
+  }
 }
 
 export default new AuthService() 

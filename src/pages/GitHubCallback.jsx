@@ -30,16 +30,20 @@ const GitHubCallback = () => {
         }
 
         // Call backend with the authorization code
-        await authService.githubLogin(code)
+        const result = await authService.githubLogin(code)
         
         setStatus('success')
         setMessage('GitHub login successful! Redirecting...')
 
-        // Redirect to dashboard or stored redirect path
+        // Check if user is admin and redirect accordingly
         setTimeout(() => {
-          const redirectPath = localStorage.getItem('github_redirect') || '/dashboard'
           localStorage.removeItem('github_redirect')
-          navigate(redirectPath)
+          if (result.user.isAdmin) {
+            navigate('/admin')
+          } else {
+            const redirectPath = localStorage.getItem('github_redirect') || '/dashboard'
+            navigate(redirectPath)
+          }
         }, 2000)
 
       } catch (error) {

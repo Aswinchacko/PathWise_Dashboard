@@ -1,18 +1,23 @@
 import { motion } from 'framer-motion'
 import Sidebar from './Sidebar'
+import authService from '../../services/authService'
 import './Layout.css'
 
 const Layout = ({ children, sidebarCollapsed, setSidebarCollapsed }) => {
+  const isAdmin = authService.isAdmin()
+
   return (
     <div className="layout">
-      <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+      {!isAdmin && (
+        <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+      )}
       <motion.main 
-        className="main-content"
+        className={`main-content ${isAdmin ? 'admin-main-content' : ''}`}
         initial={{ opacity: 0, x: 20 }}
         animate={{ 
           opacity: 1, 
           x: 0,
-          marginLeft: sidebarCollapsed ? '100px' : '260px'
+          marginLeft: isAdmin ? '0' : (sidebarCollapsed ? '100px' : '260px')
         }}
         transition={{ 
           duration: 0.3,

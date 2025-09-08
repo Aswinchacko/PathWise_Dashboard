@@ -11,6 +11,8 @@ import Chatbot from './pages/Chatbot'
 import Resources from './pages/Resources'
 import Community from './pages/Community'
 import Settings from './pages/Settings'
+import ResumeParser from './pages/ResumeParser'
+import AdminDashboard from './pages/AdminDashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import GitHubCallback from './pages/GitHubCallback'
@@ -104,6 +106,78 @@ function App() {
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
             <Settings />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/resume-parser" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <ResumeParser />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/users" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/system" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/activity" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/analytics" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/content" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/discussions" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/reports" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <AdminDashboard />
           </Layout>
         </ProtectedRoute>
       } />

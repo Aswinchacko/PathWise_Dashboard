@@ -369,42 +369,9 @@ const Analytics = () => {
           </div>
         </div>
         <div className="activity-feed">
-          <div className="activity-item">
-            <div className="activity-icon">
-              <Users size={16} />
-            </div>
-            <div className="activity-content">
-              <span>New user registered</span>
-              <time>2 minutes ago</time>
-            </div>
-          </div>
-          <div className="activity-item">
-            <div className="activity-icon">
-              <MessageSquare size={16} />
-            </div>
-            <div className="activity-content">
-              <span>Discussion created in Web Development</span>
-              <time>5 minutes ago</time>
-            </div>
-          </div>
-          <div className="activity-item">
-            <div className="activity-icon">
-              <FileText size={16} />
-            </div>
-            <div className="activity-content">
-              <span>Resume uploaded and processed</span>
-              <time>8 minutes ago</time>
-            </div>
-          </div>
-          <div className="activity-item">
-            <div className="activity-icon">
-              <Target size={16} />
-            </div>
-            <div className="activity-content">
-              <span>Roadmap generated for Data Science</span>
-              <time>12 minutes ago</time>
-            </div>
-          </div>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
+            Real-time activity feed will be implemented with WebSocket connections for live updates.
+          </p>
         </div>
       </div>
     </div>

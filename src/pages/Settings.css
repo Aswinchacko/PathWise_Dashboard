@@ -1846,6 +1846,88 @@
   background: #e5e7eb;
 }
 
+/* Success message styles */
+.success-message-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  padding: 0.5rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.success-message-compact svg {
+  flex-shrink: 0;
+}
+
+/* Spinning animation for loading */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Account info styles */
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.account-role,
+.account-last-login {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.account-role {
+  text-transform: capitalize;
+}
+
+/* Clickable preference items */
+.pref-item {
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.pref-item:hover {
+  background-color: rgba(99, 102, 241, 0.05);
+}
+
+/* Disabled states */
+input:disabled,
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error and success message improvements */
+.error-message-compact,
+.success-message-compact,
+.loading-message-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.error-message-compact svg,
+.success-message-compact svg,
+.loading-message-compact svg {
+  flex-shrink: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .settings-page {
@@ -1873,5 +1955,10 @@
   .goals-compact {
     flex-direction: column;
     gap: 1rem;
+  }
+  
+  .account-compact {
+    align-items: center;
+    text-align: center;
   }
 } 

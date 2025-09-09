@@ -1,117 +1,197 @@
 import { motion } from 'framer-motion'
-import { Lightbulb, User, Target, FileText, Upload, CheckSquare, Square, LogOut, Plus, Trash2, Edit3, Save, X, Download, Eye, Calendar, MapPin, Phone, Mail, GraduationCap, Briefcase, Award, Code, Star, Settings as SettingsIcon, Sparkles, Zap } from 'lucide-react'
+import { Lightbulb, User, Target, FileText, Upload, CheckSquare, Square, LogOut, Plus, Trash2, Edit3, Save, X, Download, Eye, Calendar, MapPin, Phone, Mail, GraduationCap, Briefcase, Award, Code, Star, Settings as SettingsIcon, Sparkles, Zap, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import authService from '../services/authService'
 import resumeStorageService from '../services/resumeStorageService'
 import profileService from '../services/profileService'
 import './Settings.css'
 
 const Settings = () => {
-  // Get current user from auth service
-  const currentUser = authService.getCurrentUser()
   const navigate = useNavigate()
+  const fileInputRef = useRef(null)
+  const [currentUser, setCurrentUser] = useState(authService.getCurrentUser())
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Resume data state
   const [resumes, setResumes] = useState([])
   const [selectedResume, setSelectedResume] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
-  // Profile state
+  // Profile state - Initialize with empty values to be populated from DB
   const [profile, setProfile] = useState({
-    full_name: currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : '',
-    email: currentUser?.email || '',
+    full_name: '',
+    email: '',
     phone: '',
     location: '',
-    summary: 'Passionate software developer with expertise in modern web technologies...',
-    skills: ['JavaScript', 'React', 'Node.js', 'Python', 'SQL'],
-    education: [
-      {
-        degree: 'Bachelor of Computer Science',
-        institution: 'University of Technology',
-        year_start: '2019',
-        year_end: '2023'
-      }
-    ],
-    experience: [
-      {
-        role: 'Software Developer',
-        company: 'Tech Corp',
-        year_start: '2023',
-        year_end: 'Present'
-      }
-    ]
+    summary: '',
+    skills: [],
+    education: [],
+    experience: [],
+    projects: [],
+    certifications: [],
+    languages: []
   })
 
   const [editing, setEditing] = useState(false)
   const [newSkill, setNewSkill] = useState('')
   const [showResumeModal, setShowResumeModal] = useState(false)
+  const [preferences, setPreferences] = useState({
+    emailNotifications: true,
+    weeklyReports: false,
+    theme: 'auto'
+  })
 
-  // Load resumes and profile on component mount
+  // Initialize component and check authentication
   useEffect(() => {
-    loadResumes()
-    loadProfile()
+    const initializeComponent = async () => {
+      // Check if user is authenticated
+      const user = authService.getCurrentUser()
+      const token = authService.getToken()
+      
+      if (!user || !token) {
+        console.warn('User not authenticated, redirecting to login')
+        navigate('/login')
+        return
+      }
+
+      setCurrentUser(user)
+      await Promise.all([
+        loadResumes(),
+        loadProfile()
+      ])
+      setIsInitialized(true)
+    }
+
+    initializeComponent()
   }, [])
 
-  const loadResumes = async () => {
+  // Auto-refresh data every 30 seconds to keep it in sync
+  useEffect(() => {
+    if (!isInitialized) return
+
+    const interval = setInterval(() => {
+      loadProfile()
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [isInitialized])
+
+  const loadResumes = useCallback(async () => {
+    if (!currentUser?.id) return
+    
     setLoading(true)
     try {
-      const result = await resumeStorageService.getResumes(currentUser?.id)
+      const result = await resumeStorageService.getResumes(currentUser.id)
       if (result.success) {
-        setResumes(result.resumes)
+        setResumes(result.resumes || [])
+        setError('')
       } else {
-        setError(result.error)
+        setError(result.error || 'Failed to load resumes')
       }
     } catch (err) {
+      console.error('Error loading resumes:', err)
       setError('Failed to load resumes')
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentUser?.id])
 
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
+    if (!currentUser) return
+
     try {
       const result = await profileService.getProfile()
       if (result.success && result.data) {
-        const userData = result.data
-        setProfile(prev => ({
-          ...prev,
-          full_name: userData.full_name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
-          email: userData.email || prev.email,
-          phone: userData.phone || prev.phone,
-          location: userData.location || prev.location,
-          summary: userData.summary || prev.summary,
-          skills: userData.skills || prev.skills,
-          education: userData.education || prev.education,
-          experience: userData.experience || prev.experience,
-          projects: userData.projects || prev.projects,
-          certifications: userData.certifications || prev.certifications,
-          languages: userData.languages || prev.languages
-        }))
-      }
-    } catch (err) {
-      console.error('Failed to load profile:', err)
-    }
-  }
-
-  const handleResumeUpload = async (file) => {
-    setLoading(true)
-    try {
-      const result = await resumeStorageService.parseAndStoreResume(file, currentUser?.id)
-      if (result.success) {
-        await loadResumes() // Reload resumes
+        const userData = result.data.user || result.data
         
-        // Update profile with resume data
-        if (result.data) {
-          await updateProfileFromResume(result.data)
+        // Create comprehensive profile from DB data
+        const profileData = {
+          full_name: userData.full_name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Your Name',
+          email: userData.email || currentUser.email || '',
+          phone: userData.phone || '',
+          location: userData.location || '',
+          summary: userData.summary || '',
+          skills: Array.isArray(userData.skills) ? userData.skills : [],
+          education: Array.isArray(userData.education) ? userData.education : [],
+          experience: Array.isArray(userData.experience) ? userData.experience : [],
+          projects: Array.isArray(userData.projects) ? userData.projects : [],
+          certifications: Array.isArray(userData.certifications) ? userData.certifications : [],
+          languages: Array.isArray(userData.languages) ? userData.languages : []
+        }
+        
+        setProfile(profileData)
+        
+        // Update preferences if available
+        if (userData.preferences) {
+          setPreferences(prev => ({
+            ...prev,
+            emailNotifications: userData.preferences.emailNotifications ?? prev.emailNotifications,
+            weeklyReports: userData.preferences.weeklyReports ?? prev.weeklyReports,
+            theme: userData.preferences.theme || prev.theme
+          }))
         }
         
         setError('')
       } else {
-        setError(result.error)
+        setError(result.error || 'Failed to load profile')
       }
     } catch (err) {
+      console.error('Error loading profile:', err)
+      setError('Failed to load profile')
+    }
+  }, [currentUser])
+
+  const handleResumeUpload = async (file) => {
+    if (!file || !currentUser?.id) {
+      setError('Please select a valid file')
+      return
+    }
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+    if (!allowedTypes.includes(file.type)) {
+      setError('Please upload a PDF, DOCX, or TXT file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setSuccess('')
+    
+    try {
+      const result = await resumeStorageService.parseAndStoreResume(file, currentUser.id)
+      if (result.success) {
+        setSuccess('Resume uploaded and parsed successfully!')
+        
+        // Reload resumes first
+        await loadResumes()
+        
+        // Update profile with resume data if available
+        if (result.data) {
+          await updateProfileFromResume(result.data)
+        }
+        
+        // Clear file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        
+        // Clear success message after 5 seconds
+        setTimeout(() => setSuccess(''), 5000)
+      } else {
+        setError(result.error || 'Failed to upload resume')
+      }
+    } catch (err) {
+      console.error('Resume upload error:', err)
       setError('Failed to upload resume')
     } finally {
       setLoading(false)
@@ -121,28 +201,21 @@ const Settings = () => {
   const updateProfileFromResume = async (resumeData) => {
     try {
       const result = await profileService.updateProfileFromResume(resumeData)
-      if (result.success && result.data?.user) {
-        const userData = result.data.user
+      if (result.success) {
+        // Reload complete profile from server to ensure consistency
+        await loadProfile()
         
-        // Update local profile state with the server response
-        setProfile(prev => ({
-          ...prev,
-          full_name: userData.full_name || prev.full_name,
-          email: userData.email || prev.email,
-          phone: userData.phone || prev.phone,
-          location: userData.location || prev.location,
-          summary: userData.summary || prev.summary,
-          skills: userData.skills || prev.skills,
-          education: userData.education || prev.education,
-          experience: userData.experience || prev.experience,
-          projects: userData.projects || prev.projects,
-          certifications: userData.certifications || prev.certifications,
-          languages: userData.languages || prev.languages
-        }))
+        // Update current user in auth service
+        const updatedUser = authService.getCurrentUser()
+        if (updatedUser) {
+          setCurrentUser(updatedUser)
+        }
         
-        // Update current user in localStorage (already done in profileService)
+        setSuccess('Profile updated from resume successfully!')
         console.log('Profile updated from resume data successfully')
-        setError('')
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(''), 3000)
       } else {
         console.error('Failed to update profile from resume:', result.error)
         setError(result.error || 'Failed to update profile from resume')
@@ -190,38 +263,99 @@ const Settings = () => {
   }
 
   const handleApplyResumeToProfile = async (resumeId) => {
+    if (!resumeId) {
+      setError('Invalid resume selected')
+      return
+    }
+
     setLoading(true)
+    setError('')
+    setSuccess('')
+    
     try {
       const result = await resumeStorageService.getResume(resumeId)
-      if (result.success) {
+      if (result.success && result.data) {
         await updateProfileFromResume(result.data)
-        setError('')
+        setSuccess('Resume applied to profile successfully!')
         console.log('Profile updated from selected resume')
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(''), 3000)
       } else {
-        setError(result.error)
+        setError(result.error || 'Failed to load resume data')
       }
     } catch (err) {
+      console.error('Error applying resume to profile:', err)
       setError('Failed to apply resume to profile')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleLogout = () => {
-    authService.logout()
-    navigate('/login')
-  }
+  const handleLogout = useCallback(() => {
+    console.log('handleLogout called') // Debug log
+    try {
+      console.log('Clearing authentication data...') // Debug log
+      
+      // Clear authentication data
+      authService.logout()
+      
+      console.log('Authentication data cleared, clearing component state...') // Debug log
+      
+      // Clear component state
+      setCurrentUser(null)
+      setProfile({
+        full_name: '',
+        email: '',
+        phone: '',
+        location: '',
+        summary: '',
+        skills: [],
+        education: [],
+        experience: [],
+        projects: [],
+        certifications: [],
+        languages: []
+      })
+      setResumes([])
+      setError('')
+      setSuccess('')
+      
+      console.log('Redirecting to login...') // Debug log
+      
+      // Force full page reload to ensure authentication check
+      window.location.href = '/login'
+    } catch (err) {
+      console.error('Logout error:', err)
+      // Force navigation even if logout fails
+      window.location.href = '/login'
+    }
+  }, [])
 
   const handleProfileSave = async () => {
     setLoading(true)
+    setError('')
+    setSuccess('')
+    
     try {
       const result = await profileService.updateProfile(profile)
       if (result.success) {
         setEditing(false)
-        // Update current user in localStorage
+        setSuccess('Profile saved successfully!')
+        
+        // Reload profile to ensure consistency with server
+        await loadProfile()
+        
+        // Update current user in auth service if user data is returned
         if (result.data?.user) {
-          profileService.updateCurrentUser(result.data.user)
+          const updatedUser = { ...currentUser, ...result.data.user }
+          localStorage.setItem('user', JSON.stringify(updatedUser))
+          setCurrentUser(updatedUser)
         }
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(''), 3000)
+        
         console.log('Profile saved successfully')
       } else {
         setError(result.error || 'Failed to save profile')
@@ -432,11 +566,13 @@ const Settings = () => {
             <div className="setting-content">
               <div className="resume-upload-compact">
                 <input
+                  ref={fileInputRef}
                   type="file"
                   id="resume-upload"
                   accept=".pdf,.docx,.txt"
                   onChange={(e) => e.target.files[0] && handleResumeUpload(e.target.files[0])}
                   style={{ display: 'none' }}
+                  disabled={loading}
                 />
                 <label htmlFor="resume-upload" className="upload-btn-compact">
                   <Upload size={16} />
@@ -444,8 +580,24 @@ const Settings = () => {
                 </label>
               </div>
               
-              {error && <div className="error-message-compact">{error}</div>}
-              {loading && <div className="loading-message-compact">Processing...</div>}
+              {error && (
+                <div className="error-message-compact">
+                  <AlertCircle size={16} />
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="success-message-compact">
+                  <CheckCircle size={16} />
+                  {success}
+                </div>
+              )}
+              {loading && (
+                <div className="loading-message-compact">
+                  <RefreshCw size={16} className="spinning" />
+                  Processing...
+                </div>
+              )}
               
               <div className="resumes-list-compact">
                 {resumes.length === 0 ? (
@@ -494,12 +646,16 @@ const Settings = () => {
             <div className="setting-content">
               <div className="goals-compact">
                 <div className="goal-stat">
-                  <div className="stat-number">3</div>
-                  <div className="stat-label">Active Goals</div>
+                  <div className="stat-number">{profile.skills?.length || 0}</div>
+                  <div className="stat-label">Skills</div>
                 </div>
                 <div className="goal-stat">
-                  <div className="stat-number">60%</div>
-                  <div className="stat-label">Progress</div>
+                  <div className="stat-number">{profile.experience?.length || 0}</div>
+                  <div className="stat-label">Experience</div>
+                </div>
+                <div className="goal-stat">
+                  <div className="stat-number">{profile.projects?.length || 0}</div>
+                  <div className="stat-label">Projects</div>
                 </div>
               </div>
             </div>
@@ -518,12 +674,16 @@ const Settings = () => {
             </div>
             <div className="setting-content">
               <div className="preferences-compact">
-                <div className="pref-item">
-                  <CheckSquare size={16} />
+                <div className="pref-item" onClick={() => {
+                  setPreferences(prev => ({ ...prev, emailNotifications: !prev.emailNotifications }))
+                }}>
+                  {preferences.emailNotifications ? <CheckSquare size={16} /> : <Square size={16} />}
                   <span>Email notifications</span>
                 </div>
-                <div className="pref-item">
-                  <Square size={16} />
+                <div className="pref-item" onClick={() => {
+                  setPreferences(prev => ({ ...prev, weeklyReports: !prev.weeklyReports }))
+                }}>
+                  {preferences.weeklyReports ? <CheckSquare size={16} /> : <Square size={16} />}
                   <span>Weekly reports</span>
                 </div>
               </div>
@@ -543,10 +703,27 @@ const Settings = () => {
             </div>
             <div className="setting-content">
               <div className="account-compact">
-                <div className="account-email">{currentUser?.email}</div>
-                <button className="logout-btn-compact" onClick={handleLogout}>
+                <div className="account-info">
+                  <div className="account-email">{currentUser?.email}</div>
+                  <div className="account-role">Role: {currentUser?.role || 'user'}</div>
+                  {currentUser?.lastLogin && (
+                    <div className="account-last-login">
+                      Last login: {new Date(currentUser.lastLogin).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+                <button 
+                  className="logout-btn-compact" 
+                  onClick={(e) => {
+                    e.preventDefault()
+                    console.log('Logout button clicked') // Debug log
+                    handleLogout()
+                  }}
+                  disabled={loading}
+                  type="button"
+                >
                   <LogOut size={16} />
-                  Logout
+                  {loading ? 'Logging out...' : 'Logout'}
                 </button>
               </div>
             </div>

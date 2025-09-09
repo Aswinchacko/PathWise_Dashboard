@@ -69,82 +69,16 @@ const ActivityLogs = () => {
       setLoading(true)
       const response = await adminService.getRecentActivity(100)
       
-      // Mock additional activities for demonstration
-      const mockActivities = [
-        {
-          id: 1,
-          type: 'user_registration',
-          message: 'New user registered: John Smith',
-          timestamp: new Date(Date.now() - 2 * 60 * 1000),
-          data: { userId: '507f1f77bcf86cd799439011', email: 'john@example.com' },
-          severity: 'info'
-        },
-        {
-          id: 2,
-          type: 'discussion_created',
-          message: 'New discussion created: "Best practices for React hooks"',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000),
-          data: { discussionId: '507f1f77bcf86cd799439012', author: 'Jane Doe' },
-          severity: 'info'
-        },
-        {
-          id: 3,
-          type: 'user_login',
-          message: 'User login: admin@pathwise.com',
-          timestamp: new Date(Date.now() - 8 * 60 * 1000),
-          data: { userId: '507f1f77bcf86cd799439013', ip: '192.168.1.1' },
-          severity: 'success'
-        },
-        {
-          id: 4,
-          type: 'roadmap_generated',
-          message: 'Roadmap generated for Full Stack Development',
-          timestamp: new Date(Date.now() - 12 * 60 * 1000),
-          data: { userId: '507f1f77bcf86cd799439014', roadmapType: 'fullstack' },
-          severity: 'info'
-        },
-        {
-          id: 5,
-          type: 'system_event',
-          message: 'Database connection restored',
-          timestamp: new Date(Date.now() - 15 * 60 * 1000),
-          data: { component: 'database', status: 'connected' },
-          severity: 'success'
-        },
-        {
-          id: 6,
-          type: 'admin_action',
-          message: 'User role updated: moderator → admin',
-          timestamp: new Date(Date.now() - 20 * 60 * 1000),
-          data: { targetUser: 'jane@example.com', admin: 'admin@pathwise.com' },
-          severity: 'warning'
-        },
-        {
-          id: 7,
-          type: 'resume_uploaded',
-          message: 'Resume uploaded and processed successfully',
-          timestamp: new Date(Date.now() - 25 * 60 * 1000),
-          data: { userId: '507f1f77bcf86cd799439015', fileName: 'resume.pdf' },
-          severity: 'info'
-        },
-        {
-          id: 8,
-          type: 'system_event',
-          message: 'Failed login attempt detected',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000),
-          data: { ip: '192.168.1.100', attempts: 3 },
-          severity: 'error'
-        }
-      ]
-
-      // Combine real and mock data
-      const allActivities = [...response, ...mockActivities].sort(
+      // Use only real data from the API
+      const activities = response.sort(
         (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
       )
 
-      setActivities(allActivities)
+      setActivities(activities)
+      console.log('Loaded activities:', activities.length, 'items')
     } catch (error) {
       console.error('Error loading activities:', error)
+      setActivities([]) // Set empty array on error
     } finally {
       setLoading(false)
     }

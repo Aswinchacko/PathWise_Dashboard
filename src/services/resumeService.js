@@ -134,10 +134,9 @@ class ResumeService {
    * Upload and parse a resume file
    * @param {File} file - The resume file to upload (PDF or DOCX)
    * @param {string} userId - Optional user ID to associate with the resume
-   * @param {boolean} bypassValidation - Skip content validation if true
    * @returns {Promise<Object>} Parsed resume data
    */
-  async parseResume(file, userId = null, bypassValidation = false) {
+  async parseResume(file, userId = null) {
     try {
       // Validate file type
       const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
@@ -151,12 +150,10 @@ class ResumeService {
         throw new Error('File size must be less than 10MB')
       }
 
-      // Validate resume content (unless bypassed)
-      if (!bypassValidation) {
-        const isResumeContent = await this.validateResumeContent(file)
-        if (!isResumeContent) {
-          throw new Error('The uploaded file does not appear to be a resume. Please upload a valid resume document containing professional information such as work experience, education, and skills.')
-        }
+      // Validate resume content
+      const isResumeContent = await this.validateResumeContent(file)
+      if (!isResumeContent) {
+        throw new Error('The uploaded file does not appear to be a resume. Please upload a valid resume document containing professional information such as work experience, education, and skills.')
       }
 
       const formData = new FormData()

@@ -659,6 +659,7 @@
   color: var(--neutral-700);
 }
 
+
 /* Empty Section */
 .empty-section {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(251, 191, 36, 0.05) 100%);

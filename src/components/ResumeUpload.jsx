@@ -109,27 +109,6 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
     }
   }, [])
 
-  const handleForceUpload = useCallback(async () => {
-    if (!rejectedFile) return
-    
-    setShowValidationModal(false)
-    setUploadedFile(rejectedFile)
-    setIsUploading(true)
-    setUploadStatus(null)
-
-    try {
-      const result = await resumeService.parseResume(rejectedFile, userId, true) // Force upload
-      setUploadStatus('success')
-      onResumeParsed?.(result.data)
-    } catch (error) {
-      console.error('Force upload error:', error)
-      setUploadStatus('error')
-      onError?.(error.message || 'Failed to process resume')
-    } finally {
-      setIsUploading(false)
-      setRejectedFile(null)
-    }
-  }, [rejectedFile, userId, onResumeParsed, onError])
 
   const handleCancelUpload = useCallback(() => {
     setShowValidationModal(false)
@@ -164,28 +143,24 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
                 Our system couldn't detect typical resume content in your file <strong>"{rejectedFile?.name}"</strong>.
               </p>
               <p>
-                This might happen if your resume has an unusual format or if our detection is too strict.
+                Please upload a document that contains professional information such as work experience, education, skills, and contact details.
               </p>
               <div className="modal-options">
-                <p><strong>What would you like to do?</strong></p>
+                <p><strong>Resume Requirements:</strong></p>
                 <ul>
-                  <li>Upload a different file with standard resume content</li>
-                  <li>Force upload this file if you're sure it's a resume</li>
+                  <li>Must contain professional information</li>
+                  <li>Include work experience or education</li>
+                  <li>Have contact details (email/phone)</li>
+                  <li>Use standard resume format</li>
                 </ul>
               </div>
             </div>
             <div className="modal-actions">
               <button 
-                className="modal-btn modal-btn-secondary"
+                className="modal-btn modal-btn-primary"
                 onClick={handleCancelUpload}
               >
                 Try Another File
-              </button>
-              <button 
-                className="modal-btn modal-btn-primary"
-                onClick={handleForceUpload}
-              >
-                Force Upload Anyway
               </button>
             </div>
           </div>

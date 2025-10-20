@@ -93,7 +93,7 @@ const Resources = () => {
       // Load all resources (local + scraped if enabled)
       const allResources = includeScrapedResources 
         ? await resourcesService.getAllResourcesCombined(true)
-        : resourcesService.getAllResources()
+        : await Promise.resolve(resourcesService.getAllResources())
       setResources(allResources)
       
       // Load stats
@@ -105,6 +105,14 @@ const Resources = () => {
       setScrapingSources(sources)
     } catch (error) {
       console.error('Error loading resources:', error)
+      // Set fallback data if API fails
+      setResources(resourcesService.getAllResources())
+      setStats({ 
+        totalResources: resourcesService.getAllResources().length,
+        byType: {},
+        byDifficulty: {}
+      })
+      setScrapingSources([])
     } finally {
       setLoading(false)
     }
@@ -226,13 +234,20 @@ const Resources = () => {
   }
 
   const toggleScrapedResources = async () => {
-    setIncludeScrapedResources(!includeScrapedResources)
+    const newValue = !includeScrapedResources
+    setIncludeScrapedResources(newValue)
     // Reload resources with new setting
-    await loadInitialData()
+    if (newValue) {
+      // When enabling scraped resources, reload data
+      await loadInitialData()
+    } else {
+      // When disabling, just use local resources
+      setResources(resourcesService.getAllResources())
+    }
   }
 
   const filterResources = async () => {
-    let filtered = resources
+    let filtered = [...resources]
 
     // Apply search filter
     if (searchQuery && includeScrapedResources) {

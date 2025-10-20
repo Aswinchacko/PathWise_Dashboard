@@ -17,6 +17,8 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import GitHubCallback from './pages/GitHubCallback'
 import LinkedInCallback from './pages/LinkedInCallback'
+import SubscriptionSuccess from './pages/SubscriptionSuccess'
+import SubscriptionCancel from './pages/SubscriptionCancel'
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
@@ -28,6 +30,8 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/auth/github/callback" element={<GitHubCallback />} />
       <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+      <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+      <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
       
       {/* Protected Main Routes */}
       <Route path="/" element={

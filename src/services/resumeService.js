@@ -150,11 +150,9 @@ class ResumeService {
         throw new Error('File size must be less than 10MB')
       }
 
-      // Validate resume content
-      const isResumeContent = await this.validateResumeContent(file)
-      if (!isResumeContent) {
-        throw new Error('The uploaded file does not appear to be a resume. Please upload a valid resume document containing professional information such as work experience, education, and skills.')
-      }
+      // Skip frontend content validation - let backend handle it
+      // This allows any properly formatted resume file to be uploaded
+      // regardless of filename or content patterns
 
       const formData = new FormData()
       formData.append('file', file)

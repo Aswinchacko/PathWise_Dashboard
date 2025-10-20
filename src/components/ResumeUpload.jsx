@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react'
-import { Upload, FileText, X, CheckCircle, AlertCircle, Loader2, AlertTriangle } from 'lucide-react'
+import { Upload, FileText, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import resumeService from '../services/resumeService'
 import './ResumeUpload.css'
 
@@ -8,8 +8,6 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState(null) // 'success', 'error', null
-  const [showValidationModal, setShowValidationModal] = useState(false)
-  const [rejectedFile, setRejectedFile] = useState(null)
   const fileInputRef = useRef(null)
 
   const supportedTypes = resumeService.getSupportedFileTypes()
@@ -47,14 +45,7 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
       console.error('Resume parsing error:', error)
       setUploadStatus('error')
       
-      // Handle validation errors with modal option
-      if (error.message.includes('does not appear to be a resume')) {
-        setRejectedFile(file)
-        setShowValidationModal(true)
-        return // Don't show error message yet, let user decide
-      }
-      
-      // Provide more specific error messages for other errors
+      // Provide more specific error messages
       let errorMessage = error.message
       if (error.message.includes('Unable to connect')) {
         errorMessage = 'Unable to connect to resume parser service. Please try again later.'
@@ -111,8 +102,6 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
 
 
   const handleCancelUpload = useCallback(() => {
-    setShowValidationModal(false)
-    setRejectedFile(null)
     setUploadedFile(null)
     setUploadStatus(null)
     if (fileInputRef.current) {
@@ -130,43 +119,6 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
 
   return (
     <div className="resume-upload-container">
-      {/* Validation Override Modal */}
-      {showValidationModal && (
-        <div className="validation-modal-overlay">
-          <div className="validation-modal">
-            <div className="modal-header">
-              <AlertTriangle className="modal-icon" />
-              <h3>Resume Validation Failed</h3>
-            </div>
-            <div className="modal-body">
-              <p>
-                Our system couldn't detect typical resume content in your file <strong>"{rejectedFile?.name}"</strong>.
-              </p>
-              <p>
-                Please upload a document that contains professional information such as work experience, education, skills, and contact details.
-              </p>
-              <div className="modal-options">
-                <p><strong>Resume Requirements:</strong></p>
-                <ul>
-                  <li>Must contain professional information</li>
-                  <li>Include work experience or education</li>
-                  <li>Have contact details (email/phone)</li>
-                  <li>Use standard resume format</li>
-                </ul>
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button 
-                className="modal-btn modal-btn-primary"
-                onClick={handleCancelUpload}
-              >
-                Try Another File
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div
         className={`resume-upload-dropzone ${isDragOver ? 'drag-over' : ''} ${isUploading ? 'uploading' : ''}`}
         onDragOver={handleDragOver}

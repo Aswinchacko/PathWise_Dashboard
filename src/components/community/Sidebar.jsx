@@ -1,14 +1,13 @@
-
 const Sidebar = ({ categories, selectedCategory, setSelectedCategory }) => (
   <aside className="community-sidebar">
     <div className="sidebar-section">
-      <h4>Categories</h4>
+      <h4>Filter by Category</h4>
       <ul>
         <li
           className={!selectedCategory ? 'active' : ''}
           onClick={() => setSelectedCategory(null)}
         >
-          All
+          All Questions
         </li>
         {categories.map((category) => (
           <li

@@ -1,0 +1,453 @@
+.enhanced-roadmap-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.enhanced-roadmap-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.enhanced-roadmap-card.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-secondary);
+}
+
+/* Header */
+.roadmap-header {
+  margin-bottom: 20px;
+}
+
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.roadmap-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  flex: 1;
+}
+
+.roadmap-badges {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.difficulty-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  text-transform: capitalize;
+}
+
+.match-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--primary-100);
+  color: var(--primary-700);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.header-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* Progress Overview */
+.progress-overview {
+  background: var(--neutral-50);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--neutral-200);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Sections */
+.prerequisites-section,
+.outcomes-section,
+.recommendations-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--neutral-50);
+  border-radius: 8px;
+}
+
+.prerequisites-section h4,
+.outcomes-section h4,
+.recommendations-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.prerequisites-section p,
+.outcomes-section p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Recommendations */
+.recommendation {
+  background: white;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-left: 4px solid var(--neutral-300);
+}
+
+.recommendation.high {
+  border-left-color: var(--error-500);
+  background: var(--error-50);
+}
+
+.recommendation.medium {
+  border-left-color: var(--warning-500);
+  background: var(--warning-50);
+}
+
+.rec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rec-title {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.rec-description {
+  margin: 0 0 8px 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.rec-action {
+  background: var(--primary-500);
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.rec-action:hover {
+  background: var(--primary-600);
+}
+
+/* Roadmap Steps */
+.roadmap-steps {
+  margin-bottom: 20px;
+}
+
+.roadmap-step {
+  margin-bottom: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--neutral-50);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--neutral-100);
+}
+
+.step-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.step-count {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--neutral-200);
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.step-skills {
+  padding: 16px;
+}
+
+.skill-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.skill-item:hover:not(.completed) {
+  background: var(--neutral-50);
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.skill-item.completed {
+  opacity: 0.7;
+}
+
+.skill-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.checkbox-empty {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--neutral-300);
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.skill-item:hover .checkbox-empty {
+  border-color: var(--primary-500);
+}
+
+.skill-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.skill-title {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.skill-item.completed .skill-title {
+  text-decoration: line-through;
+}
+
+.skill-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: var(--neutral-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Footer */
+.roadmap-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.details-toggle,
+.export-progress {
+  background: var(--neutral-100);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.details-toggle:hover,
+.export-progress:hover {
+  background: var(--neutral-200);
+}
+
+.export-progress {
+  background: var(--primary-500);
+  color: white;
+  border-color: var(--primary-500);
+}
+
+.export-progress:hover {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+}
+
+/* Detailed Analytics */
+.detailed-analytics {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.detailed-analytics h4 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.analytics-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: var(--neutral-50);
+  border-radius: 6px;
+}
+
+.analytics-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.analytics-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .enhanced-roadmap-card {
+    padding: 16px;
+  }
+  
+  .header-main {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .roadmap-badges {
+    align-self: flex-start;
+  }
+  
+  .header-stats {
+    gap: 12px;
+  }
+  
+  .progress-stats {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .roadmap-footer {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .enhanced-roadmap-card {
+    background: var(--dark-card-bg);
+    border-color: var(--dark-border-color);
+  }
+  
+  .progress-overview,
+  .prerequisites-section,
+  .outcomes-section,
+  .recommendations-section {
+    background: var(--dark-neutral-800);
+  }
+  
+  .step-header {
+    background: var(--dark-neutral-800);
+    border-color: var(--dark-border-color);
+  }
+  
+  .skill-item:hover:not(.completed) {
+    background: var(--dark-neutral-800);
+  }
+}
+

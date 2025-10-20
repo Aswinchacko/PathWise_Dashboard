@@ -10,34 +10,39 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
-  Code,
 } from 'lucide-react'
 import './Roadmap.css'
 import roadmapService from '../services/roadmapService'
 import authService from '../services/authService'
 import recommendationService from '../services/recommendationService'
-import ProjectRecommendationModal from '../components/ProjectRecommendationModal'
+import mentorService from '../services/mentorService'
+import ConfirmationModal from '../components/ConfirmationModal'
 
 const Roadmap = () => {
   // State for ML-generated roadmaps
   const [roadmapData, setRoadmapData] = useState([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingLatest, setIsLoadingLatest] = useState(true)
   const [error, setError] = useState(null)
   const [showGenerator, setShowGenerator] = useState(false)
   const [goal, setGoal] = useState('')
-  const [selectedDomain, setSelectedDomain] = useState('')
-  const [availableDomains, setAvailableDomains] = useState([])
   const [user, setUser] = useState(null)
   const [savedRoadmaps, setSavedRoadmaps] = useState([])
   const [showSavedRoadmaps, setShowSavedRoadmaps] = useState(false)
   const [processingSkill, setProcessingSkill] = useState(null)
+  const [isLoadingRoadmaps, setIsLoadingRoadmaps] = useState(true)
   
   // Project recommendation states
-  const [showProjectModal, setShowProjectModal] = useState(false)
-  const [completedTopics, setCompletedTopics] = useState([])
   const [currentDomain, setCurrentDomain] = useState('')
   const [recommendationServiceAvailable, setRecommendationServiceAvailable] = useState(false)
+  
+  // Phase completion notification states
+  const [phaseNotification, setPhaseNotification] = useState(null)
+  const [phaseRecommendations, setPhaseRecommendations] = useState([])
+  
+  // Confirmation modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [roadmapToDelete, setRoadmapToDelete] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Load user and domains on component mount
   useEffect(() => {
@@ -50,30 +55,22 @@ const Roadmap = () => {
       }
     }
 
-    const loadDomains = async () => {
-      try {
-        const response = await roadmapService.getAvailableDomains()
-        setAvailableDomains(response.domains)
-      } catch (error) {
-        console.error('Error loading domains:', error)
-      }
-    }
-
     const checkRecommendationService = async () => {
       try {
+        console.log('🔍 Checking recommendation service availability...')
         const isAvailable = await recommendationService.checkHealth()
+        console.log('📡 Recommendation service available:', isAvailable)
         setRecommendationServiceAvailable(isAvailable)
       } catch (error) {
-        console.error('Recommendation service not available:', error)
+        console.error('❌ Recommendation service not available:', error)
         setRecommendationServiceAvailable(false)
       }
     }
 
 
     loadUser()
-    loadDomains()
     checkRecommendationService()
-    loadLatestRoadmap()
+    // Don't load latest roadmap automatically - let user choose
   }, [])
 
   // Load saved roadmaps when user is available
@@ -83,31 +80,46 @@ const Roadmap = () => {
     }
   }, [user])
 
+  // Load latest roadmap after saved roadmaps are loaded
+  useEffect(() => {
+    if (savedRoadmaps.length >= 0) { // Run when savedRoadmaps changes (including empty array)
+      loadLatestRoadmap()
+    }
+  }, [savedRoadmaps])
+
   const loadSavedRoadmaps = async () => {
     try {
+      setIsLoadingRoadmaps(true)
       const response = await roadmapService.getUserRoadmaps(user.id)
       setSavedRoadmaps(response.roadmaps)
     } catch (error) {
       console.error('Error loading saved roadmaps:', error)
+    } finally {
+      setIsLoadingRoadmaps(false)
     }
   }
 
   const loadLatestRoadmap = async () => {
     try {
-      setIsLoadingLatest(true)
-      const latestRoadmap = await roadmapService.getLatestRoadmap()
-      if (latestRoadmap) {
+      // Only load latest roadmap if user has saved roadmaps
+      if (savedRoadmaps.length > 0) {
+        // Get the most recent saved roadmap
+        const latestRoadmap = savedRoadmaps[0] // Assuming they're sorted by date
         const convertedData = roadmapService.convertToRoadmapData(latestRoadmap)
         setRoadmapData(convertedData)
         setCurrentDomain(latestRoadmap.domain)
-        console.log('Loaded latest roadmap:', latestRoadmap.goal)
+        console.log('Loaded latest saved roadmap:', latestRoadmap.goal)
+      } else {
+        // Clear roadmap data if no saved roadmaps
+        setRoadmapData([])
+        setCurrentDomain('')
+        console.log('No saved roadmaps found, clearing roadmap data')
       }
     } catch (error) {
       console.error('Error loading latest roadmap:', error)
-    } finally {
-      setIsLoadingLatest(false)
     }
   }
+
 
   const generateRoadmap = async () => {
     if (!goal.trim()) {
@@ -121,18 +133,46 @@ const Roadmap = () => {
     try {
       const response = await roadmapService.generateRoadmap(
         goal,
-        selectedDomain || null,
+        null,  // No domain - let AI find the best match
         user?.id || null
       )
 
       const convertedData = roadmapService.convertToRoadmapData(response)
       setRoadmapData(convertedData)
-      setCurrentDomain(response.domain || selectedDomain)
+      setCurrentDomain(response.domain)
       setShowGenerator(false)
       
-      // Refresh saved roadmaps
+      // Save current roadmap goal for mentor recommendations
+      mentorService.saveCurrentRoadmapGoal(goal, response.domain)
+      
+      // Save goal separately in localStorage
+      const goalData = {
+        goal: goal,
+        domain: response.domain,
+        createdAt: new Date().toISOString(),
+        roadmapId: response.id
+      }
+      localStorage.setItem('current_goal', JSON.stringify(goalData))
+      
+      // Clear completion state for new roadmap
+      setCompletedIds(new Set())
+      setCompletedTopics([])
+      localStorage.removeItem('roadmap.completed')
+      
+      // Refresh saved roadmaps immediately and with delay
       if (user) {
-        loadSavedRoadmaps()
+        console.log('🔄 Refreshing saved roadmaps after generation...')
+        
+        // Immediate refresh
+        await loadSavedRoadmaps()
+        console.log('✅ Immediate refresh completed')
+        
+        // Delayed refresh to ensure backend has processed
+        setTimeout(async () => {
+          console.log('🔄 Delayed refresh of saved roadmaps...')
+          await loadSavedRoadmaps()
+          console.log('✅ Delayed refresh completed, count:', savedRoadmaps.length)
+        }, 2000)
       }
     } catch (error) {
       setError('Failed to generate roadmap. Please try again.')
@@ -147,25 +187,44 @@ const Roadmap = () => {
     setRoadmapData(convertedData)
     setCurrentDomain(roadmap.domain)
     setShowSavedRoadmaps(false)
+    
+    // Save current roadmap goal for mentor recommendations
+    mentorService.saveCurrentRoadmapGoal(roadmap.goal, roadmap.domain)
+    
+    // Clear completion state when loading a different roadmap
+    setCompletedIds(new Set())
+    setCompletedTopics([])
+    localStorage.removeItem('roadmap.completed')
   }
 
-  const deleteSavedRoadmap = async (roadmapId) => {
-    if (!user) return
+  const handleDeleteClick = (roadmap) => {
+    setRoadmapToDelete(roadmap)
+    setShowDeleteModal(true)
+  }
 
-    // Confirm deletion
-    if (!window.confirm('Are you sure you want to delete this roadmap? This action cannot be undone.')) {
-      return
-    }
+  const confirmDelete = async () => {
+    if (!user || !roadmapToDelete) return
 
+    setIsDeleting(true)
     try {
-      await roadmapService.deleteRoadmap(roadmapId, user.id)
+      await roadmapService.deleteRoadmap(roadmapToDelete.id, user.id)
       loadSavedRoadmaps()
-      // Optional: Show success message
       console.log('Roadmap deleted successfully')
+      
+      // Close modal
+      setShowDeleteModal(false)
+      setRoadmapToDelete(null)
     } catch (error) {
       console.error('Error deleting roadmap:', error)
       alert('Failed to delete roadmap. Please try again.')
+    } finally {
+      setIsDeleting(false)
     }
+  }
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false)
+    setRoadmapToDelete(null)
   }
 
   const [collapsedIds, setCollapsedIds] = useState(() => {
@@ -283,7 +342,143 @@ const Roadmap = () => {
     return isAdvancedSkill || isCoreTechnology || hasCorePattern
   }, [])
 
-  const toggleCompleted = useCallback((e, id, skillTitle, skillIndex) => {
+  const checkPhaseCompletion = useCallback((step, stepIndex, completedIds) => {
+    if (!step.children || step.children.length === 0) return false
+    
+    const totalSkills = step.children.length
+    const completedSkills = step.children.filter(skill => completedIds.has(skill.id)).length
+    
+    return completedSkills === totalSkills
+  }, [])
+
+  const getPhaseRecommendations = useCallback(async (phaseName) => {
+    console.log(`🔍 Phase recommendation check:`, {
+      phaseName,
+      recommendationServiceAvailable,
+      phaseNotification: phaseNotification
+    })
+    
+    if (!recommendationServiceAvailable) {
+      console.log(`❌ Recommendation service not available`)
+      return
+    }
+    
+    try {
+      console.log(`🎉 Phase completed: "${phaseName}" - Getting phase-based recommendations...`)
+      
+      const response = await fetch('http://localhost:5003/api/recommend/phase', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phase: phaseName,
+          limit: 3
+        })
+      })
+      
+      console.log(`📡 API Response status:`, response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`✅ Phase recommendations received:`, data)
+        
+        // Show notification with phase-based projects
+        if (data.recommendations && data.recommendations.length > 0) {
+          console.log(`🎨 Setting phase notification with ${data.recommendations.length} projects`)
+          setPhaseRecommendations(data.recommendations)
+          setPhaseNotification({
+            phase: phaseName,
+            count: data.recommendations.length,
+            method: data.method
+          })
+          
+          // Auto-hide notification after 8 seconds
+          setTimeout(() => {
+            console.log(`⏰ Auto-hiding phase notification`)
+            setPhaseNotification(null)
+          }, 8000)
+        } else {
+          console.log(`⚠️ No recommendations received`)
+        }
+      } else {
+        console.error('Failed to get phase recommendations:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error getting phase recommendations:', error)
+    }
+  }, [recommendationServiceAvailable, phaseNotification])
+
+  const handleProjectClick = useCallback(async (project) => {
+    try {
+      console.log(`🎯 Project clicked: ${project.title}`)
+      
+      // Save project to database
+      const response = await fetch('http://localhost:5003/api/projects/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(project)
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`✅ Project saved to database with ID: ${data.id}`)
+        
+        // Show success message
+        alert(`✅ Project "${project.title}" has been saved to your projects!`)
+        
+        // Close notification
+        setPhaseNotification(null)
+        
+        // Optionally redirect to projects page
+        // window.location.href = '/projects'
+      } else {
+        console.error('Failed to save project:', response.statusText)
+        alert(`❌ Failed to save project. Please try again.`)
+      }
+    } catch (error) {
+      console.error('Error saving project:', error)
+      alert(`❌ Error saving project: ${error.message}`)
+    }
+  }, [])
+
+  const handleViewAllProjects = useCallback(() => {
+    console.log(`📋 Viewing all ${phaseRecommendations.length} recommended projects`)
+    
+    // Save all projects to database
+    const saveAllProjects = async () => {
+      try {
+        const savePromises = phaseRecommendations.map(project => 
+          fetch('http://localhost:5003/api/projects/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(project)
+          })
+        )
+        
+        const responses = await Promise.all(savePromises)
+        const results = await Promise.all(responses.map(r => r.json()))
+        
+        console.log(`✅ All ${results.length} projects saved to database`)
+        alert(`✅ All ${results.length} projects have been saved to your projects!`)
+        
+        // Close notification
+        setPhaseNotification(null)
+        
+        // Optionally redirect to projects page
+        // window.location.href = '/projects'
+      } catch (error) {
+        console.error('Error saving all projects:', error)
+        alert(`❌ Error saving projects: ${error.message}`)
+      }
+    }
+    
+    saveAllProjects()
+  }, [phaseRecommendations])
+
+  const toggleCompleted = useCallback((e, id, skillTitle, skillIndex, step, stepIndex) => {
     // Prevent event bubbling to avoid accidental triggers
     e.preventDefault()
     e.stopPropagation()
@@ -299,26 +494,29 @@ const Roadmap = () => {
       
       if (next.has(id)) {
         next.delete(id)
-        // Remove from completed topics
-        setCompletedTopics(prevTopics => 
-          prevTopics.filter(topic => topic !== skillTitle)
-        )
       } else {
         next.add(id)
-        // Add to completed topics
-        setCompletedTopics(prevTopics => 
-          [...prevTopics, skillTitle]
-        )
         
-        // Only show project recommendations for core topics
-        if (recommendationServiceAvailable && isCoreTopic(skillTitle, skillIndex)) {
-          console.log(`🎯 Core topic completed: "${skillTitle}" (index: ${skillIndex})`)
-          setTimeout(() => {
-            setShowProjectModal(true)
-          }, 1000) // Longer delay to show completion animation
-        } else {
-          console.log(`📝 Regular topic completed: "${skillTitle}" (index: ${skillIndex}) - No recommendations`)
+        // Check if entire phase is now completed
+        if (step && stepIndex !== undefined) {
+          const isPhaseComplete = checkPhaseCompletion(step, stepIndex, next)
+          console.log(`🔍 Phase completion check:`, {
+            phaseTitle: step.title,
+            stepIndex,
+            totalSkills: step.children?.length || 0,
+            completedSkills: step.children?.filter(skill => next.has(skill.id)).length || 0,
+            isPhaseComplete
+          })
+          
+          if (isPhaseComplete) {
+            console.log(`🎉 Phase "${step.title}" completed!`)
+            // Get phase-based recommendations
+            getPhaseRecommendations(step.title)
+          }
         }
+        
+        // Phase-based recommendations only - no individual topic recommendations
+        console.log(`📝 Topic completed: "${skillTitle}" (index: ${skillIndex}) - Phase-based recommendations only`)
       }
       return next
     })
@@ -327,7 +525,7 @@ const Roadmap = () => {
     setTimeout(() => {
       setProcessingSkill(null)
     }, 300)
-  }, [recommendationServiceAvailable, isCoreTopic, processingSkill])
+  }, [recommendationServiceAvailable, isCoreTopic, processingSkill, checkPhaseCompletion, getPhaseRecommendations])
 
   const highlightText = useCallback((text, term) => {
     if (!term) return text
@@ -369,17 +567,51 @@ const Roadmap = () => {
               Saved Roadmaps
             </button>
           )}
-          {recommendationServiceAvailable && completedTopics.length > 0 && (
-            <button 
-              className="btn-accent" 
-              onClick={() => setShowProjectModal(true)}
-            >
-              <Code size={16} />
-              Project Ideas ({completedTopics.length})
-            </button>
-          )}
         </div>
       </div>
+
+      {/* Phase Completion Notification */}
+      {phaseNotification && (
+        <div className="phase-notification">
+          <div className="notification-content">
+            <div className="notification-icon">🎉</div>
+            <div className="notification-text">
+              <h4>Phase Completed!</h4>
+              <p>
+                <strong>{phaseNotification.phase}</strong> completed! 
+                {phaseRecommendations.length} new projects recommended based on your progress.
+              </p>
+              <div className="notification-projects">
+                {phaseRecommendations.slice(0, 2).map((project, index) => (
+                  <button 
+                    key={index} 
+                    className="project-preview clickable"
+                    onClick={() => handleProjectClick(project)}
+                    title="Click to view project details"
+                  >
+                    {project.title}
+                  </button>
+                ))}
+                {phaseRecommendations.length > 2 && (
+                  <button 
+                    className="more-projects clickable"
+                    onClick={() => handleViewAllProjects()}
+                    title="View all recommended projects"
+                  >
+                    +{phaseRecommendations.length - 2} more
+                  </button>
+                )}
+              </div>
+            </div>
+            <button 
+              className="notification-close"
+              onClick={() => setPhaseNotification(null)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Simple Search */}
       <div className="search-section">
@@ -399,27 +631,47 @@ const Roadmap = () => {
         {roadmapData.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
-              {isLoadingLatest ? (
+              {isLoadingRoadmaps ? (
                 <Loader2 size={48} className="spinning" />
               ) : (
                 <Target size={48} />
               )}
             </div>
-            <h3>{isLoadingLatest ? 'Loading Latest Roadmap...' : 'No Roadmap Available'}</h3>
+            <h3>
+              {isLoadingRoadmaps 
+                ? 'Loading Roadmaps...' 
+                : savedRoadmaps.length === 0 
+                  ? 'No Roadmap Available' 
+                  : 'No Roadmap Loaded'
+              }
+            </h3>
             <p>
-              {isLoadingLatest 
-                ? 'Loading the most recent roadmap...' 
-                : 'No roadmaps found. Click "Generate Roadmap" to create your first one'
+              {isLoadingRoadmaps 
+                ? 'Checking for saved roadmaps...' 
+                : savedRoadmaps.length === 0 
+                  ? 'No roadmaps found. Click "Generate Roadmap" to create your first one.'
+                  : 'You have saved roadmaps. Click "Saved Roadmaps" to load one or generate a new one.'
               }
             </p>
-            {!isLoadingLatest && (
-              <button 
-                className="btn-primary"
-                onClick={() => setShowGenerator(true)}
-              >
-                <Sparkles size={16} />
-                Generate New Roadmap
-              </button>
+            {!isLoadingRoadmaps && (
+              <div className="empty-actions">
+                {savedRoadmaps.length > 0 && (
+                  <button 
+                    className="btn-secondary"
+                    onClick={() => setShowSavedRoadmaps(true)}
+                  >
+                    <BookOpen size={16} />
+                    Load Saved Roadmap
+                  </button>
+                )}
+                <button 
+                  className="btn-primary"
+                  onClick={() => setShowGenerator(true)}
+                >
+                  <Sparkles size={16} />
+                  Generate New Roadmap
+                </button>
+              </div>
             )}
           </div>
         ) : (
@@ -427,7 +679,43 @@ const Roadmap = () => {
             {visibleData.map((root, rootIndex) => (
               <div key={rootIndex} className="roadmap-root">
                 <div className="roadmap-header">
-                  <h2 className="roadmap-title">{root.title}</h2>
+                  <div className="roadmap-title-section">
+                    <h2 className="roadmap-title">{root.title}</h2>
+                    {root.metadata && (
+                      <div className="roadmap-metadata">
+                        <span className={`difficulty-badge ${root.metadata.difficulty?.toLowerCase()}`}>
+                          {root.metadata.difficulty || 'Intermediate'}
+                        </span>
+                        <span className="hours-badge">
+                          ⏱️ {root.metadata.estimatedHours || 300} hours
+                        </span>
+                        <span className="domain-badge">
+                          📚 {root.metadata.domain}
+                        </span>
+                        {root.metadata.matchScore > 0 && (
+                          <span className="match-badge">
+                            ✨ {Math.round(root.metadata.matchScore * 100)}% match
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {root.metadata && (root.metadata.prerequisites || root.metadata.learningOutcomes) && (
+                      <div className="roadmap-details">
+                        {root.metadata.prerequisites && (
+                          <details className="metadata-section">
+                            <summary>📋 Prerequisites</summary>
+                            <p>{root.metadata.prerequisites}</p>
+                          </details>
+                        )}
+                        {root.metadata.learningOutcomes && (
+                          <details className="metadata-section">
+                            <summary>🎯 Learning Outcomes</summary>
+                            <p>{root.metadata.learningOutcomes}</p>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <div className="roadmap-progress">
                     <div className="progress-bar">
                       <div 
@@ -481,7 +769,7 @@ const Roadmap = () => {
                                 >
                                   <button
                                     className="skill-checkbox"
-                                    onClick={(e) => toggleCompleted(e, skill.id, skill.title, skillIndex)}
+                                    onClick={(e) => toggleCompleted(e, skill.id, skill.title, skillIndex, step, stepIndex)}
                                     type="button"
                                     disabled={processingSkill === skill.id}
                                     aria-label={`Mark ${skill.title} as ${completedIds.has(skill.id) ? 'incomplete' : 'complete'}`}
@@ -541,25 +829,18 @@ const Roadmap = () => {
                 <label>Career Goal</label>
                 <input
                   type="text"
-                  placeholder="e.g., Become a Python Developer"
+                  placeholder="e.g., Python Developer, Full Stack Developer, AI Engineer"
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      generateRoadmap()
+                    }
+                  }}
                 />
-              </div>
-              
-              <div className="input-group">
-                <label>Domain (Optional)</label>
-                <select
-                  value={selectedDomain}
-                  onChange={(e) => setSelectedDomain(e.target.value)}
-                >
-                  <option value="">Select a domain...</option>
-                  {availableDomains.map((domain) => (
-                    <option key={domain} value={domain}>
-                      {domain}
-                    </option>
-                  ))}
-                </select>
+                <small style={{ color: '#64748b', marginTop: '0.5rem', display: 'block' }}>
+                  Just enter your career goal - our AI will find the perfect roadmap for you!
+                </small>
               </div>
             </div>
             
@@ -598,29 +879,51 @@ const Roadmap = () => {
           <div className="simple-modal">
             <div className="modal-header">
               <h2>Saved Roadmaps</h2>
-              <button 
-                className="close-btn" 
-                onClick={() => setShowSavedRoadmaps(false)}
-              >
-                ×
-              </button>
+              <div className="modal-actions">
+                <button 
+                  className="refresh-btn"
+                  onClick={() => {
+                    console.log('🔄 Manual refresh of saved roadmaps...')
+                    loadSavedRoadmaps()
+                  }}
+                  title="Refresh saved roadmaps"
+                >
+                  ↻
+                </button>
+                <button 
+                  className="close-btn" 
+                  onClick={() => setShowSavedRoadmaps(false)}
+                >
+                  ×
+                </button>
+              </div>
             </div>
             
             <div className="modal-body">
-              {savedRoadmaps.length === 0 ? (
-                <div className="empty-state">
-                  <BookOpen size={48} />
-                  <p>No saved roadmaps yet</p>
-                  <button 
-                    className="btn-primary"
-                    onClick={() => {
-                      setShowSavedRoadmaps(false);
-                      setShowGenerator(true);
-                    }}
-                  >
-                    Generate First Roadmap
-                  </button>
-                </div>
+          {savedRoadmaps.length === 0 ? (
+            <div className="empty-state">
+              <BookOpen size={48} />
+              <p>No saved roadmaps yet</p>
+              <button 
+                className="btn-primary"
+                onClick={() => {
+                  setShowSavedRoadmaps(false);
+                  setShowGenerator(true);
+                }}
+              >
+                Generate First Roadmap
+              </button>
+              <button 
+                className="btn-secondary"
+                onClick={() => {
+                  console.log('🔄 Manual refresh of saved roadmaps...')
+                  loadSavedRoadmaps()
+                }}
+                style={{ marginTop: '1rem' }}
+              >
+                Refresh
+              </button>
+            </div>
               ) : (
                 <div className="roadmap-list">
                   {savedRoadmaps.map((roadmap) => (
@@ -639,7 +942,7 @@ const Roadmap = () => {
                         </button>
                         <button 
                           className="btn-danger"
-                          onClick={() => deleteSavedRoadmap(roadmap.id)}
+                          onClick={() => handleDeleteClick(roadmap)}
                         >
                           Delete
                         </button>
@@ -653,15 +956,19 @@ const Roadmap = () => {
         </div>
       )}
 
-      {/* Project Recommendation Modal */}
-      <ProjectRecommendationModal
-        isOpen={showProjectModal}
-        onClose={() => setShowProjectModal(false)}
-        completedTopics={completedTopics}
-        domain={currentDomain}
-        difficulty="intermediate"
-        userId={user?.id}
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Delete Roadmap"
+        message={`Are you sure you want to delete "${roadmapToDelete?.goal}"? This action cannot be undone and all progress will be lost.`}
+        confirmText="Delete Roadmap"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={isDeleting}
       />
+
     </div>
   )
 }

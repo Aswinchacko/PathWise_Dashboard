@@ -150,6 +150,26 @@ const chatbotService = {
       console.error('Error getting domains:', error)
       return []
     }
+  },
+
+  // Create roadmap from chat
+  async createRoadmapFromChat(userId, chatId, title, goal, domain = null) {
+    try {
+      console.log('Creating roadmap from chat:', { userId, chatId, title, goal, domain })
+      const response = await axios.post(`${CHATBOT_API_URL}/roadmap/create-from-chat`, {
+        user_id: userId,
+        chat_id: chatId,
+        title,
+        goal,
+        domain
+      })
+      console.log('Roadmap creation response:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Error creating roadmap from chat:', error)
+      console.error('Error details:', error.response?.data || error.message)
+      throw new Error('Failed to create roadmap from chat')
+    }
   }
 }
 

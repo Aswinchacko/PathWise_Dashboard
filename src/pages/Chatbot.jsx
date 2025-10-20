@@ -1,8 +1,40 @@
+import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, MessageCircle, Bot, User, Loader2, Plus, MessageSquare, Trash2, Edit3, RefreshCw, MapPin, PlusCircle, CheckCircle, X } from 'lucide-react'
+import { Send, MessageCircle, Bot, User, Loader2, Plus, MessageSquare, Trash2, Edit3, RefreshCw, MapPin, PlusCircle, CheckCircle, X, BookOpen, Save } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
 import './Chatbot.css'
 import chatbotService from '../services/chatbotService'
+
+// Simple markdown renderer with fallback
+const SafeMarkdown = ({ content }) => {
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    setHasError(false)
+  }, [content])
+
+  if (hasError) {
+    return <div className="message-text">{content}</div>
+  }
+
+  return (
+    <div className="markdown-content">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        onError={(error) => {
+          console.error('Markdown rendering error:', error)
+          setHasError(true)
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([])
@@ -17,6 +49,11 @@ const Chatbot = () => {
   const [savedRoadmaps, setSavedRoadmaps] = useState([])
   const [showRoadmapModal, setShowRoadmapModal] = useState(false)
   const [currentRoadmap, setCurrentRoadmap] = useState(null)
+  const [showCreateRoadmapModal, setShowCreateRoadmapModal] = useState(false)
+  const [roadmapTitle, setRoadmapTitle] = useState('')
+  const [roadmapGoal, setRoadmapGoal] = useState('')
+  const [roadmapDomain, setRoadmapDomain] = useState('')
+  const [isCreatingRoadmap, setIsCreatingRoadmap] = useState(false)
   const [userId] = useState(() => {
     // Use localStorage to persist userId across sessions
     const storedUserId = localStorage.getItem('chatbot_user_id')
@@ -265,6 +302,81 @@ const Chatbot = () => {
     }
   }
 
+  const handleCreateRoadmapFromChat = async () => {
+    if (!roadmapTitle.trim() || !roadmapGoal.trim() || !currentChatId) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    setIsCreatingRoadmap(true)
+    try {
+      const result = await chatbotService.createRoadmapFromChat(
+        userId,
+        currentChatId,
+        roadmapTitle.trim(),
+        roadmapGoal.trim(),
+        roadmapDomain.trim() || null
+      )
+      
+      if (result.success) {
+        alert(`Roadmap created successfully! ID: ${result.roadmap_id}`)
+        setShowCreateRoadmapModal(false)
+        setRoadmapTitle('')
+        setRoadmapGoal('')
+        setRoadmapDomain('')
+        await loadSavedRoadmaps()
+      } else {
+        alert('Failed to create roadmap')
+      }
+    } catch (error) {
+      console.error('Error creating roadmap:', error)
+      alert('Failed to create roadmap: ' + error.message)
+    } finally {
+      setIsCreatingRoadmap(false)
+    }
+  }
+
+  const handleShowCreateRoadmapModal = () => {
+    if (!currentChatId) {
+      alert('Please start a conversation first')
+      return
+    }
+    setRoadmapTitle(currentTitle)
+    setRoadmapGoal('')
+    setRoadmapDomain('')
+    setShowCreateRoadmapModal(true)
+  }
+
+  const handleQuickAddToRoadmap = async (roadmapMetadata) => {
+    if (!currentChatId) {
+      alert('Please start a conversation first')
+      return
+    }
+
+    setIsCreatingRoadmap(true)
+    try {
+      const result = await chatbotService.createRoadmapFromChat(
+        userId,
+        currentChatId,
+        roadmapMetadata.suggested_title,
+        roadmapMetadata.suggested_goal,
+        roadmapMetadata.suggested_domain
+      )
+      
+      if (result.success) {
+        alert(`Roadmap "${roadmapMetadata.suggested_title}" created successfully!`)
+        await loadSavedRoadmaps()
+      } else {
+        alert('Failed to create roadmap')
+      }
+    } catch (error) {
+      console.error('Error creating roadmap:', error)
+      alert('Failed to create roadmap: ' + error.message)
+    } finally {
+      setIsCreatingRoadmap(false)
+    }
+  }
+
   return (
     <div className="chatbot-page">
       {/* Sidebar */}
@@ -356,12 +468,23 @@ const Chatbot = () => {
             <div className="chat-title-section">
               <h1>{currentTitle}</h1>
               {currentChatId && (
-                <button 
-                  className="edit-title-btn"
-                  onClick={() => setEditingTitle(true)}
-                >
-                  <Edit3 size={16} />
-                </button>
+                <div className="title-actions">
+                  <button 
+                    className="edit-title-btn"
+                    onClick={() => setEditingTitle(true)}
+                    title="Edit Title"
+                  >
+                    <Edit3 size={16} />
+                  </button>
+                  <button 
+                    className="create-roadmap-btn"
+                    onClick={handleShowCreateRoadmapModal}
+                    title="Create Roadmap from Chat"
+                  >
+                    <BookOpen size={16} />
+                    Create Roadmap
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -430,11 +553,34 @@ const Chatbot = () => {
                     </div>
                     <div className="message-content">
                       <div className="message-text">
-                        {message.content}
+                        {message.type === 'bot' ? (
+                          <SafeMarkdown content={message.content} />
+                        ) : (
+                          message.content
+                        )}
                       </div>
                       {message.confidence && (
                         <div className="confidence-indicator">
                           Confidence: {Math.round(message.confidence * 100)}%
+                        </div>
+                      )}
+                      {message.roadmap_metadata && message.roadmap_metadata.is_roadmap_request && (
+                        <div className="roadmap-suggestion">
+                          <div className="roadmap-suggestion-header">
+                            <MapPin size={16} />
+                            <span>This looks like a learning roadmap request!</span>
+                          </div>
+                          <div className="roadmap-suggestion-content">
+                            <p><strong>Suggested Title:</strong> {message.roadmap_metadata.suggested_title}</p>
+                            <p><strong>Domain:</strong> {message.roadmap_metadata.suggested_domain}</p>
+                            <button 
+                              className="add-to-roadmap-btn"
+                              onClick={() => handleQuickAddToRoadmap(message.roadmap_metadata)}
+                            >
+                              <PlusCircle size={16} />
+                              Add to My Roadmaps
+                            </button>
+                          </div>
                         </div>
                       )}
                       {message.metadata?.roadmap && (
@@ -614,6 +760,111 @@ const Chatbot = () => {
                 onClick={handleCloseRoadmapModal}
               >
                 Close
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Create Roadmap Modal */}
+      {showCreateRoadmapModal && (
+        <motion.div 
+          className="roadmap-modal-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowCreateRoadmapModal(false)}
+        >
+          <motion.div 
+            className="roadmap-modal"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="roadmap-modal-header">
+              <div className="roadmap-modal-title">
+                <BookOpen size={24} />
+                <h2>Create Roadmap from Chat</h2>
+              </div>
+              <button 
+                className="roadmap-modal-close"
+                onClick={() => setShowCreateRoadmapModal(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="roadmap-modal-content">
+              <div className="form-group">
+                <label htmlFor="roadmap-title">Roadmap Title *</label>
+                <input
+                  id="roadmap-title"
+                  type="text"
+                  value={roadmapTitle}
+                  onChange={(e) => setRoadmapTitle(e.target.value)}
+                  placeholder="e.g., Learn React Development"
+                  className="form-input"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="roadmap-goal">Learning Goal *</label>
+                <textarea
+                  id="roadmap-goal"
+                  value={roadmapGoal}
+                  onChange={(e) => setRoadmapGoal(e.target.value)}
+                  placeholder="Describe what you want to achieve..."
+                  className="form-textarea"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="roadmap-domain">Domain (Optional)</label>
+                <input
+                  id="roadmap-domain"
+                  type="text"
+                  value={roadmapDomain}
+                  onChange={(e) => setRoadmapDomain(e.target.value)}
+                  placeholder="e.g., Frontend Development, Data Science"
+                  className="form-input"
+                />
+              </div>
+              
+              <div className="roadmap-preview">
+                <h4>Preview</h4>
+                <p><strong>Title:</strong> {roadmapTitle || 'Untitled Roadmap'}</p>
+                <p><strong>Goal:</strong> {roadmapGoal || 'No goal specified'}</p>
+                <p><strong>Domain:</strong> {roadmapDomain || 'General Learning'}</p>
+                <p><strong>Source:</strong> Chat conversation with {messages.length} messages</p>
+              </div>
+            </div>
+            
+            <div className="roadmap-modal-actions">
+              <button 
+                className="roadmap-modal-btn primary"
+                onClick={handleCreateRoadmapFromChat}
+                disabled={isCreatingRoadmap || !roadmapTitle.trim() || !roadmapGoal.trim()}
+              >
+                {isCreatingRoadmap ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Create Roadmap
+                  </>
+                )}
+              </button>
+              <button 
+                className="roadmap-modal-btn secondary"
+                onClick={() => setShowCreateRoadmapModal(false)}
+                disabled={isCreatingRoadmap}
+              >
+                Cancel
               </button>
             </div>
           </motion.div>

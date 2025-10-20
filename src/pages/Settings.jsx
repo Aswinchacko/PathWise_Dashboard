@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
-import { Lightbulb, User, Target, FileText, Upload, CheckSquare, Square, LogOut, Plus, Trash2, Edit3, Save, X, Download, Eye, Calendar, MapPin, Phone, Mail, GraduationCap, Briefcase, Award, Code, Star, Settings as SettingsIcon, Sparkles, Zap, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react'
+import { Lightbulb, User, Target, FileText, Upload, CheckSquare, Square, LogOut, Plus, Trash2, Edit3, Save, X, Download, Eye, Calendar, MapPin, Phone, Mail, GraduationCap, Briefcase, Award, Code, Star, Settings as SettingsIcon, Sparkles, Zap, RefreshCw, AlertCircle, CheckCircle, Crown, CreditCard } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import authService from '../services/authService'
 import resumeStorageService from '../services/resumeStorageService'
 import profileService from '../services/profileService'
+import subscriptionService from '../services/subscriptionService'
+import SubscriptionModal from '../components/SubscriptionModal'
 import './Settings.css'
 
 const Settings = () => {
@@ -43,6 +45,11 @@ const Settings = () => {
     weeklyReports: false,
     theme: 'auto'
   })
+  
+  // Subscription state
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null)
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false)
 
   // Initialize component and check authentication
   useEffect(() => {
@@ -60,7 +67,8 @@ const Settings = () => {
       setCurrentUser(user)
       await Promise.all([
         loadResumes(),
-        loadProfile()
+        loadProfile(),
+        loadSubscriptionInfo()
       ])
       setIsInitialized(true)
     }
@@ -144,6 +152,98 @@ const Settings = () => {
     }
   }, [currentUser])
 
+  const loadSubscriptionInfo = useCallback(async () => {
+    if (!currentUser?.id) return
+    
+    try {
+      const result = await subscriptionService.getUserSubscription(currentUser.id)
+      if (result.success) {
+        setSubscriptionInfo(result.data)
+      } else {
+        console.error('Failed to load subscription info:', result.error)
+        // Set default free subscription if API fails
+        setSubscriptionInfo({
+          subscription: {
+            user_id: currentUser.id,
+            plan: 'free',
+            status: 'active',
+            start_date: new Date().toISOString(),
+            end_date: null
+          },
+          usage: {
+            roadmaps_created: 0,
+            projects_accessed: 0,
+            resources_viewed: 0,
+            opportunities_applied: 0
+          },
+          plan_details: {
+            name: 'Free Plan',
+            price: 0,
+            features: {
+              roadmaps: 2,
+              projects: 3,
+              resources: 10,
+              opportunities: 0
+            }
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Error loading subscription info:', err)
+      // Set default free subscription if service is unavailable
+      setSubscriptionInfo({
+        subscription: {
+          user_id: currentUser.id,
+          plan: 'free',
+          status: 'active',
+          start_date: new Date().toISOString(),
+          end_date: null
+        },
+        usage: {
+          roadmaps_created: 0,
+          projects_accessed: 0,
+          resources_viewed: 0,
+          opportunities_applied: 0
+        },
+        plan_details: {
+          name: 'Free Plan',
+          price: 0,
+          features: {
+            roadmaps: 2,
+            projects: 3,
+            resources: 10,
+            opportunities: 0
+          }
+        }
+      })
+    }
+  }, [currentUser?.id])
+
+  const handleCancelSubscription = async () => {
+    if (!currentUser?.id || !subscriptionInfo?.subscription || subscriptionInfo.subscription.plan === 'free') {
+      return
+    }
+
+    if (!window.confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
+      return
+    }
+
+    setSubscriptionLoading(true)
+    try {
+      const result = await subscriptionService.cancelSubscription(currentUser.id)
+      if (result.success) {
+        setSuccess('Subscription canceled successfully')
+        await loadSubscriptionInfo() // Reload subscription info
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError(result.error || 'Failed to cancel subscription')
+      }
+    } catch (err) {
+      setError('Error canceling subscription')
+    } finally {
+      setSubscriptionLoading(false)
+    }
+  }
 
   const updateProfileFromResume = async (resumeData) => {
     try {
@@ -558,12 +658,81 @@ const Settings = () => {
             </div>
           </motion.div>
 
+          {/* Subscription */}
+          <motion.div
+            className="setting-card subscription-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            <div className="setting-header">
+              <Crown size={20} />
+              <h3>Subscription</h3>
+            </div>
+            <div className="setting-content">
+              <div className="subscription-compact">
+                {subscriptionInfo ? (
+                  <>
+                    <div className="subscription-info">
+                      <div className="subscription-plan">
+                        <span className={`plan-badge ${subscriptionInfo.subscription.plan}`}>
+                          {subscriptionInfo.plan_details.name}
+                        </span>
+                        <span className="plan-price">
+                          {subscriptionInfo.plan_details.price_display || 
+                           (subscriptionInfo.plan_details.price > 0 ? 
+                            `₹${subscriptionInfo.plan_details.price}/month` : 'Free')}
+                        </span>
+                      </div>
+                      <div className="subscription-status">
+                        Status: <span className={`status ${subscriptionInfo.subscription.status}`}>
+                          {subscriptionInfo.subscription.status}
+                        </span>
+                      </div>
+                      {subscriptionInfo.subscription.end_date && (
+                        <div className="subscription-end">
+                          {subscriptionInfo.subscription.status === 'active' ? 'Renews' : 'Expires'}: {' '}
+                          {new Date(subscriptionInfo.subscription.end_date).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="subscription-actions">
+                      {subscriptionInfo.subscription.plan === 'free' ? (
+                        <button 
+                          className="upgrade-btn-compact"
+                          onClick={() => setShowSubscriptionModal(true)}
+                        >
+                          <Crown size={16} />
+                          Upgrade
+                        </button>
+                      ) : (
+                        <button 
+                          className="manage-btn-compact"
+                          onClick={handleCancelSubscription}
+                          disabled={subscriptionLoading}
+                        >
+                          <CreditCard size={16} />
+                          {subscriptionLoading ? 'Processing...' : 'Cancel'}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="subscription-loading">
+                    <RefreshCw className="spinning" size={16} />
+                    Loading subscription...
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
           {/* Account */}
           <motion.div
             className="setting-card account-card"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
           >
             <div className="setting-header">
               <User size={20} />
@@ -845,6 +1014,14 @@ const Settings = () => {
           </div>
         </div>
       )}
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        userId={currentUser?.id}
+        currentPlan={subscriptionInfo?.subscription?.plan || 'free'}
+      />
     </div>
   )
 }

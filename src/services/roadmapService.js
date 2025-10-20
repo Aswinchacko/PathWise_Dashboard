@@ -19,9 +19,33 @@ class RoadmapService {
         user_id: userId
       });
 
-      return response.data;
+      // Log enhanced metadata for debugging
+      const data = response.data;
+      console.log(`Generated roadmap: ${data.title}`);
+      console.log(`Difficulty: ${data.difficulty}`);
+      console.log(`Estimated hours: ${data.estimated_hours}`);
+      console.log(`Match score: ${data.match_score}`);
+      
+      return data;
     } catch (error) {
       console.error('Error generating roadmap:', error);
+      throw error;
+    }
+  }
+
+  async getRoadmapRecommendations(interests = '', experienceLevel = 'intermediate', timeCommitment = 300, limit = 5) {
+    try {
+      const params = {
+        interests,
+        experience_level: experienceLevel,
+        time_commitment: timeCommitment,
+        limit
+      };
+
+      const response = await api.get('/api/roadmap/roadmaps/recommendations', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching roadmap recommendations:', error);
       throw error;
     }
   }
@@ -97,21 +121,56 @@ class RoadmapService {
       return [];
     }
 
-    // Create a single root node with all steps as children
+    // Create enhanced root node with metadata
     const rootNode = {
       id: 'roadmap_root',
       title: roadmap.goal || 'Learning Roadmap',
+      metadata: {
+        difficulty: roadmap.difficulty || 'Intermediate',
+        estimatedHours: roadmap.estimated_hours || 300,
+        prerequisites: roadmap.prerequisites || '',
+        learningOutcomes: roadmap.learning_outcomes || '',
+        matchScore: roadmap.match_score || 0,
+        domain: roadmap.domain
+      },
       children: roadmap.steps.map((step, stepIndex) => ({
         id: `step_${stepIndex}`,
         title: step.category,
+        icon: this.getIconForCategory(step.category),
+        color: this.getColorForLevel(stepIndex + 1),
         children: step.skills.map((skill, skillIndex) => ({
           id: `step_${stepIndex}_skill_${skillIndex}`,
-          title: skill
+          title: skill,
+          icon: this.getIconForSkill(skill),
+          estimatedTime: this.estimateSkillTime(skill)
         }))
       }))
     };
 
     return [rootNode];
+  }
+
+  // Estimate time for individual skills
+  estimateSkillTime(skill) {
+    const skillLower = skill.toLowerCase();
+    
+    // Basic skills - shorter time
+    if (skillLower.includes('basic') || skillLower.includes('introduction') || skillLower.includes('fundamentals')) {
+      return '2-4 hours';
+    }
+    
+    // Advanced skills - longer time
+    if (skillLower.includes('advanced') || skillLower.includes('optimization') || skillLower.includes('architecture')) {
+      return '8-12 hours';
+    }
+    
+    // Framework/library specific
+    if (skillLower.includes('react') || skillLower.includes('vue') || skillLower.includes('angular')) {
+      return '6-10 hours';
+    }
+    
+    // Default time
+    return '4-6 hours';
   }
 
   getColorForLevel(level) {

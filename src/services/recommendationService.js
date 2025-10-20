@@ -3,7 +3,7 @@
  * Handles project recommendations based on completed roadmap topics
  */
 
-const RECOMMENDATION_API_URL = 'http://localhost:8002'
+const RECOMMENDATION_API_URL = 'http://localhost:5003'
 
 class RecommendationService {
   /**
@@ -139,8 +139,13 @@ class RecommendationService {
   async checkHealth() {
     try {
       const response = await fetch(`${RECOMMENDATION_API_URL}/health`)
-      return response.ok
+      if (response.ok) {
+        const data = await response.json()
+        return data.status === 'healthy'
+      }
+      return false
     } catch (error) {
+      console.error('Health check failed:', error)
       return false
     }
   }

@@ -500,6 +500,21 @@
   50% { transform: translateY(-10px); }
 }
 
+/* Password Hint Styles */
+.password-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: var(--success-600);
+  font-weight: 500;
+}
+
+.password-hint svg {
+  color: var(--success-500);
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .auth-container {

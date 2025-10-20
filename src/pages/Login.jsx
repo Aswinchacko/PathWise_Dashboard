@@ -103,37 +103,165 @@ const Login = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
+    
+    // Sanitize input
+    let sanitizedValue = value
+    if (type === 'email') {
+      sanitizedValue = value.toLowerCase().trim()
+    } else if (type === 'text' || type === 'password') {
+      sanitizedValue = value.trim()
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : sanitizedValue
     }))
     
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
+    // Real-time validation
+    if (type !== 'checkbox') {
+      validateField(name, sanitizedValue)
     }
+  }
+
+  // Enhanced validation functions
+  const validateEmail = (email) => {
+    // Basic email structure check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    
+    if (!emailRegex.test(email)) {
+      return false
+    }
+    
+    // Split email into parts
+    const parts = email.split('@')
+    if (parts.length !== 2) {
+      return false
+    }
+    
+    const [localPart, domainPart] = parts
+    
+    // Check local part (before @)
+    if (!localPart || localPart.length === 0) {
+      return false
+    }
+    
+    // Check domain part (after @)
+    if (!domainPart || domainPart.length < 4) {
+      return false
+    }
+    
+    // Domain must contain at least one dot
+    if (!domainPart.includes('.')) {
+      return false
+    }
+    
+    // Split domain by dots
+    const domainParts = domainPart.split('.')
+    if (domainParts.length < 2) {
+      return false
+    }
+    
+    // TLD (last part) must be at least 2 characters
+    const tld = domainParts[domainParts.length - 1]
+    if (!tld || tld.length < 2) {
+      return false
+    }
+    
+    // Domain name (before TLD) must be at least 2 characters
+    const domainName = domainParts.slice(0, -1).join('.')
+    if (!domainName || domainName.length < 2) {
+      return false
+    }
+    
+    // Additional check: domain name should contain letters, not just numbers
+    if (!/[a-zA-Z]/.test(domainName)) {
+      return false
+    }
+    
+    return true
+  }
+
+  const validatePassword = (password) => {
+    const errors = []
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters long')
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter')
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter')
+    }
+    if (!/\d/.test(password)) {
+      errors.push('Password must contain at least one number')
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      errors.push('Password must contain at least one special character')
+    }
+    return errors
   }
 
   const validateForm = () => {
     const newErrors = {}
     
-    if (!formData.email) {
+    // Email validation
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email'
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    } else if (formData.email.length > 254) {
+      newErrors.email = 'Email address is too long'
     }
     
+    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else {
+      const passwordErrors = validatePassword(formData.password)
+      if (passwordErrors.length > 0) {
+        newErrors.password = passwordErrors[0] // Show first error
+      }
     }
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  // Real-time validation
+  const validateField = (name, value) => {
+    const newErrors = { ...errors }
+    
+    switch (name) {
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = 'Email is required'
+        } else if (!validateEmail(value)) {
+          newErrors.email = 'Please enter a valid email address'
+        } else if (value.length > 254) {
+          newErrors.email = 'Email address is too long'
+        } else {
+          delete newErrors.email
+        }
+        break
+        
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Password is required'
+        } else {
+          const passwordErrors = validatePassword(value)
+          if (passwordErrors.length > 0) {
+            newErrors.password = passwordErrors[0]
+          } else {
+            delete newErrors.password
+          }
+        }
+        break
+        
+      default:
+        break
+    }
+    
+    setErrors(newErrors)
   }
 
   const handleSubmit = async (e) => {
@@ -262,18 +390,20 @@ const Login = () => {
                   placeholder="Enter your email"
                   className={errors.email ? 'error' : ''}
                   disabled={isLoading}
+                  autoComplete="email"
+                  maxLength={254}
                 />
-                {errors.email && (
-                  <motion.div 
-                    className="error-message"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <AlertCircle size={16} />
-                    {errors.email}
-                  </motion.div>
-                )}
               </div>
+              {errors.email && (
+                <motion.div 
+                  className="error-message"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <AlertCircle size={16} />
+                  {errors.email}
+                </motion.div>
+              )}
             </div>
 
             <div className="form-group">
@@ -289,26 +419,41 @@ const Login = () => {
                   placeholder="Enter your password"
                   className={errors.password ? 'error' : ''}
                   disabled={isLoading}
+                  autoComplete="current-password"
+                  maxLength={128}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
-                {errors.password && (
-                  <motion.div 
-                    className="error-message"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <AlertCircle size={16} />
-                    {errors.password}
-                  </motion.div>
-                )}
               </div>
+              {errors.password && (
+                <motion.div 
+                  className="error-message"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <AlertCircle size={16} />
+                  {errors.password}
+                </motion.div>
+              )}
+              
+              {/* Password requirements hint */}
+              {formData.password && !errors.password && (
+                <motion.div 
+                  className="password-hint"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <CheckCircle size={16} />
+                  <span>Password looks good!</span>
+                </motion.div>
+              )}
             </div>
 
             <div className="form-options">

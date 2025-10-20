@@ -546,6 +546,54 @@
   50% { transform: translateY(-10px); }
 }
 
+/* Password Requirements Styles */
+.password-requirements {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--neutral-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--neutral-200);
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--text-sm);
+}
+
+.requirement-item:last-child {
+  margin-bottom: 0;
+}
+
+.requirement-item svg {
+  flex-shrink: 0;
+}
+
+.requirement-item .valid {
+  color: var(--success-600);
+}
+
+.requirement-item .invalid {
+  color: var(--neutral-400);
+}
+
+/* Password Hint Styles */
+.password-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: var(--success-600);
+  font-weight: 500;
+}
+
+.password-hint svg {
+  color: var(--success-500);
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .auth-container {

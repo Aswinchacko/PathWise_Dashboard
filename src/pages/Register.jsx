@@ -91,55 +91,228 @@ const Register = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
+    
+    // Sanitize input
+    let sanitizedValue = value
+    if (type === 'email') {
+      sanitizedValue = value.toLowerCase().trim()
+    } else if (type === 'text') {
+      sanitizedValue = value.trim()
+    } else if (type === 'password') {
+      sanitizedValue = value // Don't trim passwords
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : sanitizedValue
     }))
     
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
+    // Real-time validation
+    if (type !== 'checkbox') {
+      validateField(name, sanitizedValue)
     }
+  }
+
+  // Enhanced validation functions
+  const validateEmail = (email) => {
+    // Basic email structure check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    
+    if (!emailRegex.test(email)) {
+      return false
+    }
+    
+    // Split email into parts
+    const parts = email.split('@')
+    if (parts.length !== 2) {
+      return false
+    }
+    
+    const [localPart, domainPart] = parts
+    
+    // Check local part (before @)
+    if (!localPart || localPart.length === 0) {
+      return false
+    }
+    
+    // Check domain part (after @)
+    if (!domainPart || domainPart.length < 4) {
+      return false
+    }
+    
+    // Domain must contain at least one dot
+    if (!domainPart.includes('.')) {
+      return false
+    }
+    
+    // Split domain by dots
+    const domainParts = domainPart.split('.')
+    if (domainParts.length < 2) {
+      return false
+    }
+    
+    // TLD (last part) must be at least 2 characters
+    const tld = domainParts[domainParts.length - 1]
+    if (!tld || tld.length < 2) {
+      return false
+    }
+    
+    // Domain name (before TLD) must be at least 2 characters
+    const domainName = domainParts.slice(0, -1).join('.')
+    if (!domainName || domainName.length < 2) {
+      return false
+    }
+    
+    // Additional check: domain name should contain letters, not just numbers
+    if (!/[a-zA-Z]/.test(domainName)) {
+      return false
+    }
+    
+    return true
+  }
+
+  const validateName = (name) => {
+    const nameRegex = /^[a-zA-Z\s'-]{2,50}$/
+    return nameRegex.test(name.trim())
+  }
+
+  const validatePassword = (password) => {
+    const errors = []
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters long')
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter')
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter')
+    }
+    if (!/\d/.test(password)) {
+      errors.push('Password must contain at least one number')
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      errors.push('Password must contain at least one special character')
+    }
+    return errors
   }
 
   const validateForm = () => {
     const newErrors = {}
     
+    // First name validation
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'First name is required'
+    } else if (!validateName(formData.firstName)) {
+      newErrors.firstName = 'First name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes'
     }
     
+    // Last name validation
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Last name is required'
+    } else if (!validateName(formData.lastName)) {
+      newErrors.lastName = 'Last name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes'
     }
     
-    if (!formData.email) {
+    // Email validation
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email'
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    } else if (formData.email.length > 254) {
+      newErrors.email = 'Email address is too long'
     }
     
+    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required'
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else {
+      const passwordErrors = validatePassword(formData.password)
+      if (passwordErrors.length > 0) {
+        newErrors.password = passwordErrors[0] // Show first error
+      }
     }
     
+    // Confirm password validation
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password'
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match'
     }
     
+    // Terms agreement validation
     if (!formData.agreeToTerms) {
       newErrors.agreeToTerms = 'You must agree to the terms and conditions'
     }
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  // Real-time validation
+  const validateField = (name, value) => {
+    const newErrors = { ...errors }
+    
+    switch (name) {
+      case 'firstName':
+        if (!value.trim()) {
+          newErrors.firstName = 'First name is required'
+        } else if (!validateName(value)) {
+          newErrors.firstName = 'First name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes'
+        } else {
+          delete newErrors.firstName
+        }
+        break
+        
+      case 'lastName':
+        if (!value.trim()) {
+          newErrors.lastName = 'Last name is required'
+        } else if (!validateName(value)) {
+          newErrors.lastName = 'Last name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes'
+        } else {
+          delete newErrors.lastName
+        }
+        break
+        
+      case 'email':
+        if (!value.trim()) {
+          newErrors.email = 'Email is required'
+        } else if (!validateEmail(value)) {
+          newErrors.email = 'Please enter a valid email address'
+        } else if (value.length > 254) {
+          newErrors.email = 'Email address is too long'
+        } else {
+          delete newErrors.email
+        }
+        break
+        
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Password is required'
+        } else {
+          const passwordErrors = validatePassword(value)
+          if (passwordErrors.length > 0) {
+            newErrors.password = passwordErrors[0]
+          } else {
+            delete newErrors.password
+          }
+        }
+        break
+        
+      case 'confirmPassword':
+        if (!value) {
+          newErrors.confirmPassword = 'Please confirm your password'
+        } else if (formData.password !== value) {
+          newErrors.confirmPassword = 'Passwords do not match'
+        } else {
+          delete newErrors.confirmPassword
+        }
+        break
+        
+      default:
+        break
+    }
+    
+    setErrors(newErrors)
   }
 
   const handleSubmit = async (e) => {
@@ -293,18 +466,20 @@ const Register = () => {
                     placeholder="Enter your first name"
                     className={errors.firstName ? 'error' : ''}
                     disabled={isLoading}
+                    autoComplete="given-name"
+                    maxLength={50}
                   />
-                  {errors.firstName && (
-                    <motion.div 
-                      className="error-message"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                    >
-                      <AlertCircle size={16} />
-                      {errors.firstName}
-                    </motion.div>
-                  )}
                 </div>
+                {errors.firstName && (
+                  <motion.div 
+                    className="error-message"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <AlertCircle size={16} />
+                    {errors.firstName}
+                  </motion.div>
+                )}
               </div>
 
               <div className="form-group">
@@ -320,18 +495,20 @@ const Register = () => {
                     placeholder="Enter your last name"
                     className={errors.lastName ? 'error' : ''}
                     disabled={isLoading}
+                    autoComplete="family-name"
+                    maxLength={50}
                   />
-                  {errors.lastName && (
-                    <motion.div 
-                      className="error-message"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                    >
-                      <AlertCircle size={16} />
-                      {errors.lastName}
-                    </motion.div>
-                  )}
                 </div>
+                {errors.lastName && (
+                  <motion.div 
+                    className="error-message"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                  >
+                    <AlertCircle size={16} />
+                    {errors.lastName}
+                  </motion.div>
+                )}
               </div>
             </div>
 
@@ -348,18 +525,20 @@ const Register = () => {
                   placeholder="Enter your email"
                   className={errors.email ? 'error' : ''}
                   disabled={isLoading}
+                  autoComplete="email"
+                  maxLength={254}
                 />
-                {errors.email && (
-                  <motion.div 
-                    className="error-message"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <AlertCircle size={16} />
-                    {errors.email}
-                  </motion.div>
-                )}
               </div>
+              {errors.email && (
+                <motion.div 
+                  className="error-message"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <AlertCircle size={16} />
+                  {errors.email}
+                </motion.div>
+              )}
             </div>
 
             <div className="form-group">
@@ -375,45 +554,68 @@ const Register = () => {
                   placeholder="Create a strong password"
                   className={errors.password ? 'error' : ''}
                   disabled={isLoading}
+                  autoComplete="new-password"
+                  maxLength={128}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
-                {errors.password && (
-                  <motion.div 
-                    className="error-message"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <AlertCircle size={16} />
-                    {errors.password}
-                  </motion.div>
-                )}
               </div>
-              
-              {formData.password && (
+              {errors.password && (
                 <motion.div 
-                  className="password-strength"
+                  className="error-message"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="strength-bar">
-                    <div 
-                      className="strength-fill"
-                      style={{ 
-                        width: `${(passwordStrength() / 5) * 100}%`,
-                        backgroundColor: getPasswordStrengthColor()
-                      }}
-                    ></div>
+                  <AlertCircle size={16} />
+                  {errors.password}
+                </motion.div>
+              )}
+              
+              {/* Password requirements */}
+              {formData.password && (
+                <motion.div 
+                  className="password-requirements"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="requirement-item">
+                    <CheckCircle size={16} className={formData.password.length >= 8 ? 'valid' : 'invalid'} />
+                    <span className={formData.password.length >= 8 ? 'valid' : 'invalid'}>At least 8 characters</span>
                   </div>
-                  <span className="strength-text" style={{ color: getPasswordStrengthColor() }}>
-                    {getPasswordStrengthText()}
-                  </span>
+                  <div className="requirement-item">
+                    <CheckCircle size={16} className={/[A-Z]/.test(formData.password) ? 'valid' : 'invalid'} />
+                    <span className={/[A-Z]/.test(formData.password) ? 'valid' : 'invalid'}>One uppercase letter</span>
+                  </div>
+                  <div className="requirement-item">
+                    <CheckCircle size={16} className={/[a-z]/.test(formData.password) ? 'valid' : 'invalid'} />
+                    <span className={/[a-z]/.test(formData.password) ? 'valid' : 'invalid'}>One lowercase letter</span>
+                  </div>
+                  <div className="requirement-item">
+                    <CheckCircle size={16} className={/\d/.test(formData.password) ? 'valid' : 'invalid'} />
+                    <span className={/\d/.test(formData.password) ? 'valid' : 'invalid'}>One number</span>
+                  </div>
+                  <div className="requirement-item">
+                    <CheckCircle size={16} className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'valid' : 'invalid'} />
+                    <span className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'valid' : 'invalid'}>One special character</span>
+                  </div>
+                </motion.div>
+              )}
+              
+              {formData.password && !errors.password && (
+                <motion.div 
+                  className="password-hint"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <CheckCircle size={16} />
+                  <span>Password meets all requirements!</span>
                 </motion.div>
               )}
             </div>
@@ -431,26 +633,40 @@ const Register = () => {
                   placeholder="Confirm your password"
                   className={errors.confirmPassword ? 'error' : ''}
                   disabled={isLoading}
+                  autoComplete="new-password"
+                  maxLength={128}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   disabled={isLoading}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
-                {errors.confirmPassword && (
-                  <motion.div 
-                    className="error-message"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <AlertCircle size={16} />
-                    {errors.confirmPassword}
-                  </motion.div>
-                )}
               </div>
+              {errors.confirmPassword && (
+                <motion.div 
+                  className="error-message"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <AlertCircle size={16} />
+                  {errors.confirmPassword}
+                </motion.div>
+              )}
+              
+              {formData.confirmPassword && !errors.confirmPassword && formData.password === formData.confirmPassword && (
+                <motion.div 
+                  className="password-hint"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <CheckCircle size={16} />
+                  <span>Passwords match!</span>
+                </motion.div>
+              )}
             </div>
 
             <div className="form-options">

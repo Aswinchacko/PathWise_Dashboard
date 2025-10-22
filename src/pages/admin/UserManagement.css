@@ -226,8 +226,11 @@
   font-size: 13px;
 }
 
-/* Role Select */
-.role-select {
+/* Role Badge */
+.role-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -235,23 +238,23 @@
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
   text-transform: uppercase;
+  width: fit-content;
 }
 
-.role-select.admin {
+.role-badge.admin {
   background: var(--error-50);
   border-color: var(--error-200);
   color: var(--error-700);
 }
 
-.role-select.moderator {
+.role-badge.moderator {
   background: var(--warning-50);
   border-color: var(--warning-200);
   color: var(--warning-700);
 }
 
-.role-select.user {
+.role-badge.user {
   background: var(--success-50);
   border-color: var(--success-200);
   color: var(--success-700);

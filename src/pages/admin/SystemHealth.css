@@ -210,18 +210,23 @@
 
 .detail-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
   font-size: 14px;
 }
 
 .detail-item span:first-child {
   color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .detail-item span:last-child {
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 16px;
 }
 
 .progress-bar {

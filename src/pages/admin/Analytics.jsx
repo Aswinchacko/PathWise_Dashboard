@@ -93,6 +93,14 @@ const Analytics = () => {
     return Math.round(((recent - previous) / previous) * 100)
   }
 
+  const calculateGrowthPercentage = (data) => {
+    if (!data || data.length < 2) return 0
+    const recent = data[data.length - 1]?.count || 0
+    const previous = data[data.length - 2]?.count || 0
+    if (previous === 0) return recent > 0 ? 100 : 0
+    return Math.round(((recent - previous) / previous) * 100)
+  }
+
   const getTotalCount = (data) => {
     return data?.reduce((sum, item) => sum + item.count, 0) || 0
   }
@@ -116,6 +124,18 @@ const Analytics = () => {
       { country: 'Canada', users: 432, percentage: 8 },
       { country: 'Australia', users: 321, percentage: 6 }
     ]
+  }
+
+  if (loading) {
+    return (
+      <div className="analytics">
+        <div className="loading-state">
+          <BarChart3 size={48} className="spinning" />
+          <h3>Loading Analytics...</h3>
+          <p>Fetching your analytics data</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -223,50 +243,237 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="charts-section">
-        <div className="chart-container main-chart">
-          <div className="chart-header">
+      {/* Growth Trends Section */}
+      <div className="growth-trends-section">
+        <div className="trends-header">
             <h3>Growth Trends</h3>
-            <div className="chart-controls">
+          <div className="trends-controls">
               <div className="metric-selector">
                 <button 
                   className={selectedMetric === 'users' ? 'active' : ''}
                   onClick={() => setSelectedMetric('users')}
                 >
+                <Users size={16} />
                   Users
                 </button>
                 <button 
                   className={selectedMetric === 'discussions' ? 'active' : ''}
                   onClick={() => setSelectedMetric('discussions')}
                 >
+                <MessageSquare size={16} />
                   Discussions
                 </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="trends-content">
+          <div className="chart-grid">
+            <div className="trend-chart">
+              <div className="chart-container">
+                <div className="chart-title">
+                  {selectedMetric === 'users' ? 'User' : 'Discussion'} Growth
+                </div>
+                <div className="bar-chart">
+                  {selectedMetric === 'users' ? (
+                    analytics?.userGrowth?.slice(-7).map((item, index) => {
+                      const maxValue = Math.max(...analytics.userGrowth.slice(-7).map(d => d.count))
+                      const height = (item.count / maxValue) * 100
+                      return (
+                        <div key={index} className="bar-group">
+                          <div className="bar" style={{ height: `${height}%` }}>
+                            <span className="bar-value">{item.count}</span>
+                          </div>
+                          <div className="bar-label">
+                            {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    analytics?.discussionGrowth?.slice(-7).map((item, index) => {
+                      const maxValue = Math.max(...analytics.discussionGrowth.slice(-7).map(d => d.count))
+                      const height = (item.count / maxValue) * 100
+                      return (
+                        <div key={index} className="bar-group">
+                          <div className="bar" style={{ height: `${height}%` }}>
+                            <span className="bar-value">{item.count}</span>
+                          </div>
+                          <div className="bar-label">
+                            {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="chart-subtitle">
+                  Daily Growth Visualization
+                </div>
+              </div>
+            </div>
+
+            <div className="line-chart">
+              <div className="chart-container">
+                <div className="chart-title">
+                  {selectedMetric === 'users' ? 'User' : 'Discussion'} Trend
+                </div>
+                <div className="line-chart-container">
+                  <svg className="line-svg" viewBox="0 0 300 150">
+                    {selectedMetric === 'users' ? (
+                      <>
+                        {/* Grid lines */}
+                        <defs>
+                          <pattern id="grid" width="50" height="30" patternUnits="userSpaceOnUse">
+                            <path d="M 50 0 L 0 0 0 30" fill="none" stroke="var(--border-color)" strokeWidth="0.5" opacity="0.3"/>
+                          </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                        
+                        {/* Line path */}
+                        <path
+                          d={(() => {
+                            const data = analytics?.userGrowth?.slice(-7) || []
+                            const maxValue = Math.max(...data.map(d => d.count))
+                            const points = data.map((item, index) => {
+                              const x = (index / (data.length - 1)) * 280 + 10
+                              const y = 140 - ((item.count / maxValue) * 120)
+                              return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+                            }).join(' ')
+                            return points
+                          })()}
+                          fill="none"
+                          stroke="var(--primary-500)"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        
+                        {/* Data points */}
+                        {analytics?.userGrowth?.slice(-7).map((item, index) => {
+                          const maxValue = Math.max(...analytics.userGrowth.slice(-7).map(d => d.count))
+                          const x = (index / (analytics.userGrowth.slice(-7).length - 1)) * 280 + 10
+                          const y = 140 - ((item.count / maxValue) * 120)
+                          return (
+                            <g key={index}>
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r="4"
+                                fill="var(--primary-500)"
+                                stroke="white"
+                                strokeWidth="2"
+                              />
+                              <text
+                                x={x}
+                                y={y - 10}
+                                textAnchor="middle"
+                                fontSize="10"
+                                fill="var(--text-primary)"
+                                fontWeight="600"
+                              >
+                                {item.count}
+                              </text>
+                            </g>
+                          )
+                        })}
+                      </>
+                    ) : (
+                      <>
+                        {/* Grid lines */}
+                        <defs>
+                          <pattern id="grid2" width="50" height="30" patternUnits="userSpaceOnUse">
+                            <path d="M 50 0 L 0 0 0 30" fill="none" stroke="var(--border-color)" strokeWidth="0.5" opacity="0.3"/>
+                          </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid2)" />
+                        
+                        {/* Line path */}
+                        <path
+                          d={(() => {
+                            const data = analytics?.discussionGrowth?.slice(-7) || []
+                            const maxValue = Math.max(...data.map(d => d.count))
+                            const points = data.map((item, index) => {
+                              const x = (index / (data.length - 1)) * 280 + 10
+                              const y = 140 - ((item.count / maxValue) * 120)
+                              return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+                            }).join(' ')
+                            return points
+                          })()}
+                          fill="none"
+                          stroke="var(--success-500)"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        
+                        {/* Data points */}
+                        {analytics?.discussionGrowth?.slice(-7).map((item, index) => {
+                          const maxValue = Math.max(...analytics.discussionGrowth.slice(-7).map(d => d.count))
+                          const x = (index / (analytics.discussionGrowth.slice(-7).length - 1)) * 280 + 10
+                          const y = 140 - ((item.count / maxValue) * 120)
+                          return (
+                            <g key={index}>
+                              <circle
+                                cx={x}
+                                cy={y}
+                                r="4"
+                                fill="var(--success-500)"
+                                stroke="white"
+                                strokeWidth="2"
+                              />
+                              <text
+                                x={x}
+                                y={y - 10}
+                                textAnchor="middle"
+                                fontSize="10"
+                                fill="var(--text-primary)"
+                                fontWeight="600"
+                              >
+                                {item.count}
+                              </text>
+                            </g>
+                          )
+                        })}
+                      </>
+                    )}
+                  </svg>
+                </div>
+                <div className="chart-subtitle">
+                  Trend Analysis Over Time
+                </div>
               </div>
             </div>
           </div>
-          <div className="chart-placeholder">
-            <BarChart3 size={64} />
-            <h4>
-              {selectedMetric === 'users' ? 'User' : 'Discussion'} Growth Chart
-            </h4>
-            <p>Interactive chart showing growth trends over time</p>
-            <div className="chart-data-preview">
+          
+          <div className="trend-data">
               {selectedMetric === 'users' ? (
                 <div className="data-points">
+                <div className="data-header">
+                  <h4>Recent User Growth</h4>
+                  <span className="total-count">
+                    Total: {analytics?.userGrowth?.slice(-7).reduce((sum, item) => sum + item.count, 0) || 0}
+                  </span>
+                </div>
                   {analytics?.userGrowth?.slice(-7).map((item, index) => (
                     <div key={index} className="data-point">
-                      <span>{new Date(item.date).toLocaleDateString()}</span>
-                      <span>{item.count} users</span>
+                    <div className="point-date">{new Date(item.date).toLocaleDateString()}</div>
+                    <div className="point-value">{item.count} users</div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="data-points">
+                <div className="data-header">
+                  <h4>Recent Discussion Growth</h4>
+                  <span className="total-count">
+                    Total: {analytics?.discussionGrowth?.slice(-7).reduce((sum, item) => sum + item.count, 0) || 0}
+                  </span>
+                </div>
                   {analytics?.discussionGrowth?.slice(-7).map((item, index) => (
                     <div key={index} className="data-point">
-                      <span>{new Date(item.date).toLocaleDateString()}</span>
-                      <span>{item.count} discussions</span>
+                    <div className="point-date">{new Date(item.date).toLocaleDateString()}</div>
+                    <div className="point-value">{item.count} discussions</div>
                     </div>
                   ))}
                 </div>
@@ -275,48 +482,213 @@ const Analytics = () => {
           </div>
         </div>
 
-        <div className="chart-container secondary-chart">
+      {/* User Growth Line Graph Section */}
+      <div className="user-growth-section">
+        <div className="growth-header">
+          <h3>User Growth Trends</h3>
+          <span className="growth-subtitle">Visualization of user growth over time</span>
+        </div>
+        <div className="growth-content">
+          <div className="growth-chart">
           <div className="chart-header">
-            <h3>User Engagement</h3>
+              <h4>User Growth Line Chart</h4>
+              <div className="chart-legend">
+                <div className="legend-item">
+                  <div className="legend-color user-growth"></div>
+                  <span>User Growth</span>
           </div>
-          <div className="engagement-metrics">
-            <div className="engagement-item">
-              <div className="engagement-icon">
-                <Clock size={20} />
-              </div>
-              <div className="engagement-data">
-                <span className="value">{mockMetrics.sessionDuration}</span>
-                <span className="label">Avg. Session</span>
               </div>
             </div>
-            <div className="engagement-item">
-              <div className="engagement-icon">
-                <Eye size={20} />
-              </div>
-              <div className="engagement-data">
-                <span className="value">{mockMetrics.bounceRate}%</span>
-                <span className="label">Bounce Rate</span>
+            <div className="line-chart-wrapper">
+              <svg className="user-growth-svg" viewBox="0 0 400 200">
+                {/* Grid lines */}
+                <defs>
+                  <pattern id="userGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--border-color)" strokeWidth="0.5" opacity="0.2"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#userGrid)" />
+                
+                {/* Y-axis labels */}
+                <g className="y-axis">
+                  {[0, 25, 50, 75, 100].map((value, index) => {
+                    const y = 180 - (value * 1.6)
+                    return (
+                      <g key={index}>
+                        <line x1="30" y1={y} x2="370" y2={y} stroke="var(--border-color)" strokeWidth="0.5" opacity="0.3"/>
+                        <text x="25" y={y + 4} textAnchor="end" fontSize="10" fill="var(--text-secondary)">
+                          {value}%
+                        </text>
+                      </g>
+                    )
+                  })}
+                </g>
+                
+                {/* X-axis labels */}
+                <g className="x-axis">
+                  {analytics?.userGrowth?.slice(-7).map((item, index) => {
+                    const data = analytics.userGrowth.slice(-7)
+                    const x = (index / Math.max(data.length - 1, 1)) * 340 + 30
+                    return (
+                      <text key={index} x={x} y="195" textAnchor="middle" fontSize="10" fill="var(--text-secondary)">
+                        {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </text>
+                    )
+                  })}
+                </g>
+                
+                {/* User growth line */}
+                <path
+                  d={(() => {
+                    const data = analytics?.userGrowth?.slice(-7) || []
+                    if (data.length === 0) return ''
+                    const maxValue = Math.max(...data.map(d => d.count))
+                    if (maxValue === 0) return ''
+                    const points = data.map((item, index) => {
+                      const x = (index / Math.max(data.length - 1, 1)) * 340 + 30
+                      const y = 180 - ((item.count / maxValue) * 160)
+                      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+                    }).join(' ')
+                    return points
+                  })()}
+                  fill="none"
+                  stroke="var(--primary-500)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                
+                {/* Data points */}
+                {analytics?.userGrowth?.slice(-7).map((item, index) => {
+                  const data = analytics.userGrowth.slice(-7)
+                  if (data.length === 0) return null
+                  const maxValue = Math.max(...data.map(d => d.count))
+                  if (maxValue === 0) return null
+                  const x = (index / Math.max(data.length - 1, 1)) * 340 + 30
+                  const y = 180 - ((item.count / maxValue) * 160)
+                  return (
+                    <g key={index} className="data-point">
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r="5"
+                        fill="var(--primary-500)"
+                        stroke="white"
+                        strokeWidth="2"
+                      />
+                      <text
+                        x={x}
+                        y={y - 15}
+                        textAnchor="middle"
+                        fontSize="11"
+                        fill="var(--text-primary)"
+                        fontWeight="600"
+                      >
+                        {item.count}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
+            </div>
+            <div className="chart-footer">
+              <p>Growth percentage based on daily user registrations</p>
+            </div>
+          </div>
+          
+          <div className="growth-stats">
+            <div className="stat-card">
+              <h4>Total Users</h4>
+              <span className="stat-value">{analytics?.userGrowth?.reduce((sum, item) => sum + item.count, 0) || 0}</span>
+            </div>
+            <div className="stat-card">
+              <h4>Growth Rate</h4>
+              <span className="stat-value positive">+{calculateGrowthPercentage(analytics?.userGrowth)}%</span>
+            </div>
+            <div className="stat-card">
+              <h4>Peak Day</h4>
+              <span className="stat-value">
+                {(() => {
+                  const peak = analytics?.userGrowth?.reduce((max, item) => item.count > max.count ? item : max, analytics?.userGrowth?.[0])
+                  return peak ? new Date(peak.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'
+                })()}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* User Engagement Section */}
+      <div className="user-engagement-section">
+        <div className="engagement-header">
+          <h3>User Engagement</h3>
+          <span className="engagement-subtitle">Platform interaction metrics</span>
+        </div>
+        
+        <div className="engagement-grid">
+          <div className="engagement-card session-card">
+            <div className="card-icon">
+              <Clock size={24} />
+            </div>
+            <div className="card-content">
+              <h4>{mockMetrics.sessionDuration}</h4>
+              <p>Average Session Duration</p>
+              <div className="card-trend positive">
+                <TrendingUp size={14} />
+                +8.2%
               </div>
             </div>
-            <div className="engagement-item">
-              <div className="engagement-icon">
-                <Zap size={20} />
+          </div>
+
+          <div className="engagement-card bounce-card">
+            <div className="card-icon">
+              <Eye size={24} />
+            </div>
+            <div className="card-content">
+              <h4>{mockMetrics.bounceRate}%</h4>
+              <p>Bounce Rate</p>
+              <div className="card-trend negative">
+                <TrendingDown size={14} />
+                -3.1%
               </div>
-              <div className="engagement-data">
-                <span className="value">4.2</span>
-                <span className="label">Pages/Session</span>
+            </div>
+          </div>
+
+          <div className="engagement-card pages-card">
+            <div className="card-icon">
+              <Zap size={24} />
+            </div>
+            <div className="card-content">
+              <h4>4.2</h4>
+              <p>Pages per Session</p>
+              <div className="card-trend positive">
+                <TrendingUp size={14} />
+                +12.5%
+              </div>
+            </div>
+          </div>
+
+          <div className="engagement-card conversion-card">
+            <div className="card-icon">
+              <Target size={24} />
+              </div>
+            <div className="card-content">
+              <h4>{mockMetrics.conversionRate}%</h4>
+              <p>Conversion Rate</p>
+              <div className="card-trend positive">
+                <TrendingUp size={14} />
+                +5.8%
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Detailed Analytics */}
-      <div className="detailed-analytics">
-        <div className="analytics-card">
-          <div className="card-header">
+      {/* Top Pages Analytics */}
+      <div className="top-pages-section">
+        <div className="pages-header">
             <h3>Top Pages</h3>
-            <span className="card-subtitle">Most visited pages</span>
+          <span className="pages-subtitle">Most visited pages</span>
           </div>
           <div className="top-pages">
             {mockMetrics.topPages.map((page, index) => (
@@ -337,43 +709,6 @@ const Analytics = () => {
           </div>
         </div>
 
-        <div className="analytics-card">
-          <div className="card-header">
-            <h3>User Locations</h3>
-            <span className="card-subtitle">Geographic distribution</span>
-          </div>
-          <div className="user-locations">
-            {mockMetrics.userLocations.map((location, index) => (
-              <div key={index} className="location-item">
-                <div className="location-info">
-                  <Globe size={16} />
-                  <span className="country">{location.country}</span>
-                </div>
-                <div className="location-stats">
-                  <span className="users">{location.users.toLocaleString()}</span>
-                  <span className="percentage">{location.percentage}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Real-time Activity */}
-      <div className="realtime-section">
-        <div className="section-header">
-          <h3>Real-time Activity</h3>
-          <div className="realtime-indicator">
-            <div className="pulse"></div>
-            <span>Live</span>
-          </div>
-        </div>
-        <div className="activity-feed">
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
-            Real-time activity feed will be implemented with WebSocket connections for live updates.
-          </p>
-        </div>
-      </div>
     </div>
   )
 }

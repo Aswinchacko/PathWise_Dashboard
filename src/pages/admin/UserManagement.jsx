@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import AlertModal from '../../components/AlertModal'
 import {
   Users,
   Search,
@@ -34,6 +35,12 @@ const UserManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [bulkAction, setBulkAction] = useState('')
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  })
 
   const usersPerPage = 20
 
@@ -67,7 +74,30 @@ const UserManagement = () => {
       loadUsers()
     } catch (error) {
       console.error('Error updating user:', error)
-      alert('Failed to update user')
+      
+      // Handle specific error messages from the backend
+      if (error.message && error.message.includes('cannot change your own role')) {
+        setAlertModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Permission Denied',
+          message: 'You cannot change your own role. Ask another admin to do it.'
+        })
+      } else if (error.message && error.message.includes('cannot deactivate your own account')) {
+        setAlertModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Permission Denied',
+          message: 'You cannot deactivate your own account. Ask another admin to do it.'
+        })
+      } else {
+        setAlertModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Update Failed',
+          message: 'Failed to update user: ' + (error.message || 'Unknown error')
+        })
+      }
     }
   }
 
@@ -163,10 +193,6 @@ const UserManagement = () => {
             <button className="btn-secondary" onClick={exportUsers}>
               <Download size={20} />
               Export
-            </button>
-            <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-              <Plus size={20} />
-              Add User
             </button>
           </div>
         </div>
@@ -282,15 +308,10 @@ const UserManagement = () => {
                   </div>
                 </td>
                 <td>
-                  <select
-                    value={user.role || 'user'}
-                    onChange={(e) => handleUserUpdate(user._id, { role: e.target.value })}
-                    className={`role-select ${user.role || 'user'}`}
-                  >
-                    <option value="user">User</option>
-                    <option value="moderator">Moderator</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                  <div className={`role-badge ${user.role || 'user'}`}>
+                    <Shield size={16} />
+                    {(user.role || 'user').charAt(0).toUpperCase() + (user.role || 'user').slice(1)}
+                  </div>
                 </td>
                 <td>
                   <button
@@ -370,6 +391,15 @@ const UserManagement = () => {
           </button>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+      />
     </div>
   )
 }

@@ -55,7 +55,8 @@ class AdminService {
     })
 
     if (!response.ok) {
-      throw new Error('Failed to update user')
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Failed to update user')
     }
 
     return response.json()

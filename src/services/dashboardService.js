@@ -64,8 +64,30 @@ class DashboardService {
         // Fetch analytics data from roadmap API
         const analyticsData = await this.apiCall(`${API_BASE_URLS.roadmap}/analytics/overview`)
         
+        // Fetch real user and discussion stats from auth API (same as admin dashboard)
+        let userStats = { total: 0, active: 0, newThisMonth: 0 }
+        let discussionStats = { total: 0, activeThisWeek: 0 }
+        
+        try {
+          const authStats = await this.getAuthStats()
+          userStats = authStats.users
+          discussionStats = authStats.discussions
+        } catch (authError) {
+          console.warn('Could not fetch auth stats, using roadmap estimates:', authError)
+          // Fallback to roadmap estimates if auth service is unavailable
+          userStats = {
+            total: analyticsData.unique_users || 0,
+            active: analyticsData.unique_users || 0,
+            newThisMonth: Math.floor((analyticsData.unique_users || 0) * 0.1)
+          }
+          discussionStats = {
+            total: Math.floor((analyticsData.user_generated || 0) * 0.5),
+            activeThisWeek: Math.floor((analyticsData.user_generated || 0) * 0.1)
+          }
+        }
+        
         return {
-          totalUsers: analyticsData.unique_users || 0,
+          totalUsers: userStats.total,
           roadmapsGenerated: analyticsData.total_roadmaps || 0,
           chatSessions: Math.floor((analyticsData.user_generated || 0) * 2.5), // Estimate based on user activity
           resumesProcessed: Math.floor((analyticsData.user_generated || 0) * 0.8), // Estimate 80% upload resumes
@@ -75,7 +97,12 @@ class DashboardService {
           csvImportedRoadmaps: analyticsData.csv_imported || 0,
           recentRoadmaps30d: analyticsData.recent_roadmaps_30d || 0,
           topDomains: analyticsData.top_domains || [],
-          difficultyDistribution: analyticsData.difficulty_distribution || []
+          difficultyDistribution: analyticsData.difficulty_distribution || [],
+          // Real user and discussion stats
+          activeUsers: userStats.active,
+          newUsersThisMonth: userStats.newThisMonth,
+          totalDiscussions: discussionStats.total,
+          activeDiscussionsThisWeek: discussionStats.activeThisWeek
         }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error)
@@ -93,7 +120,11 @@ class DashboardService {
             roadmapsGenerated: roadmapStats.status === 'fulfilled' ? roadmapStats.value.totalRoadmaps : 0,
             chatSessions: chatStats.status === 'fulfilled' ? chatStats.value.totalChats : 0,
             resumesProcessed: resumeStats.status === 'fulfilled' ? resumeStats.value.totalResumes : 0,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            activeUsers: 0,
+            newUsersThisMonth: 0,
+            totalDiscussions: 0,
+            activeDiscussionsThisWeek: 0
           }
         } catch (fallbackError) {
           console.error('Fallback stats also failed:', fallbackError)
@@ -102,7 +133,11 @@ class DashboardService {
             roadmapsGenerated: 0,
             chatSessions: 0,
             resumesProcessed: 0,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
+            activeUsers: 0,
+            newUsersThisMonth: 0,
+            totalDiscussions: 0,
+            activeDiscussionsThisWeek: 0
           }
         }
       }
@@ -305,6 +340,28 @@ class DashboardService {
         }
       }
     })
+  }
+
+  // Get auth statistics (same as admin dashboard)
+  async getAuthStats() {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await fetch(`${API_BASE_URLS.auth}/admin/stats`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch auth stats')
+    }
+
+    return response.json()
   }
 
   // Clear cache

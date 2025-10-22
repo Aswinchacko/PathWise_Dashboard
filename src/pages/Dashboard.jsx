@@ -229,7 +229,27 @@ const Dashboard = () => {
               <p className="stat-label">Total Users</p>
               <div className="stat-change positive">
                 <TrendingUp size={16} />
-                <span>Active users</span>
+                <span>{stats.activeUsers || 0} Active</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon discussions">
+              <MessageSquare size={24} />
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">
+                {loading ? (
+                  <div className="loading-skeleton" style={{ width: '80px', height: '32px' }}></div>
+                ) : (
+                  (stats.totalDiscussions || 0).toLocaleString()
+                )}
+              </h3>
+              <p className="stat-label">Total Discussions</p>
+              <div className="stat-change positive">
+                <TrendingUp size={16} />
+                <span>{stats.activeDiscussionsThisWeek || 0} This Week</span>
               </div>
             </div>
           </div>
@@ -270,26 +290,6 @@ const Dashboard = () => {
               <div className="stat-change positive">
                 <TrendingUp size={16} />
                 <span>AI conversations</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon resumes">
-              <FileText size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">
-                {loading ? (
-                  <div className="loading-skeleton" style={{ width: '80px', height: '32px' }}></div>
-                ) : (
-                  stats.resumesProcessed.toLocaleString()
-                )}
-              </h3>
-              <p className="stat-label">Resumes Processed</p>
-              <div className="stat-change positive">
-                <TrendingUp size={16} />
-                <span>Documents analyzed</span>
               </div>
             </div>
           </div>

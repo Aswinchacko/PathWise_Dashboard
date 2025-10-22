@@ -5,6 +5,7 @@ import UserManagement from './admin/UserManagement'
 import SystemHealth from './admin/SystemHealth'
 import Analytics from './admin/Analytics'
 import ActivityLogs from './admin/ActivityLogs'
+import AlertModal from '../components/AlertModal'
 import {
   Users,
   Shield,
@@ -111,6 +112,17 @@ const AdminDashboard = () => {
     role: 'user',
     isActive: true
   })
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  })
+  const [fieldErrors, setFieldErrors] = useState({
+    firstName: '',
+    lastName: '',
+    email: ''
+  })
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3, path: '/admin' },
@@ -203,7 +215,30 @@ const AdminDashboard = () => {
       setStats(statsData)
     } catch (error) {
       console.error('Error updating user:', error)
-      alert('Failed to update user')
+      
+      // Handle specific error messages from the backend
+      if (error.message && error.message.includes('cannot change your own role')) {
+        setAlertModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Permission Denied',
+          message: 'You cannot change your own role. Ask another admin to do it.'
+        })
+      } else if (error.message && error.message.includes('cannot deactivate your own account')) {
+        setAlertModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Permission Denied',
+          message: 'You cannot deactivate your own account. Ask another admin to do it.'
+        })
+      } else {
+        setAlertModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Update Failed',
+          message: 'Failed to update user: ' + (error.message || 'Unknown error')
+        })
+      }
     }
   }
 
@@ -297,14 +332,77 @@ const AdminDashboard = () => {
       role: user.role || 'user',
       isActive: user.isActive !== undefined ? user.isActive : true
     })
+    setFieldErrors({
+      firstName: '',
+      lastName: '',
+      email: ''
+    })
     setShowEditModal(true)
     console.log('Edit modal state set to:', true)
+  }
+
+  const validateField = (field, value) => {
+    let error = ''
+    
+    switch (field) {
+      case 'firstName':
+        if (!value.trim()) {
+          error = 'First name is required'
+        } else if (value.trim().length < 2) {
+          error = 'First name must be at least 2 characters'
+        } else if (value.trim().length > 50) {
+          error = 'First name must be less than 50 characters'
+        } else if (!/^[a-zA-Z\s\-']+$/.test(value.trim())) {
+          error = 'First name can only contain letters, spaces, hyphens, and apostrophes'
+        }
+        break
+        
+      case 'lastName':
+        if (!value.trim()) {
+          error = 'Last name is required'
+        } else if (value.trim().length < 2) {
+          error = 'Last name must be at least 2 characters'
+        } else if (value.trim().length > 50) {
+          error = 'Last name must be less than 50 characters'
+        } else if (!/^[a-zA-Z\s\-']+$/.test(value.trim())) {
+          error = 'Last name can only contain letters, spaces, hyphens, and apostrophes'
+        }
+        break
+        
+      case 'email':
+        if (!value.trim()) {
+          error = 'Email is required'
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          error = 'Please enter a valid email address'
+        } else if (value.trim().length > 100) {
+          error = 'Email must be less than 100 characters'
+        } else if (editingUser && value.trim().toLowerCase() !== editingUser.email.toLowerCase()) {
+          // Check for duplicate email (only if email is being changed)
+          const existingUser = users.find(user => 
+            user.email.toLowerCase() === value.trim().toLowerCase() && 
+            user._id !== editingUser._id
+          )
+          if (existingUser) {
+            error = 'This email address is already in use by another user'
+          }
+        }
+        break
+    }
+    
+    return error
   }
 
   const handleEditFormChange = (field, value) => {
     setEditForm(prev => ({
       ...prev,
       [field]: value
+    }))
+    
+    // Validate the field and update error state
+    const error = validateField(field, value)
+    setFieldErrors(prev => ({
+      ...prev,
+      [field]: error
     }))
   }
 
@@ -313,15 +411,118 @@ const AdminDashboard = () => {
 
     // Validate required fields
     if (!editForm.firstName.trim() || !editForm.lastName.trim() || !editForm.email.trim()) {
-      alert('Please fill in all required fields (First Name, Last Name, Email)')
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Please fill in all required fields (First Name, Last Name, Email)'
+      })
+      return
+    }
+
+    // Validate first name
+    if (editForm.firstName.trim().length < 2) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'First name must be at least 2 characters long'
+      })
+      return
+    }
+
+    if (editForm.firstName.trim().length > 50) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'First name must be less than 50 characters'
+      })
+      return
+    }
+
+    // Validate last name
+    if (editForm.lastName.trim().length < 2) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Last name must be at least 2 characters long'
+      })
+      return
+    }
+
+    if (editForm.lastName.trim().length > 50) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Last name must be less than 50 characters'
+      })
       return
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!editForm.email.trim() || !emailRegex.test(editForm.email.trim())) {
-      alert('Please enter a valid email address')
+    if (!emailRegex.test(editForm.email.trim())) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Please enter a valid email address'
+      })
       return
+    }
+
+    // Validate email length
+    if (editForm.email.trim().length > 100) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Email must be less than 100 characters'
+      })
+      return
+    }
+
+    // Validate name contains only letters, spaces, hyphens, and apostrophes
+    const nameRegex = /^[a-zA-Z\s\-']+$/
+    if (!nameRegex.test(editForm.firstName.trim())) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'First name can only contain letters, spaces, hyphens, and apostrophes'
+      })
+      return
+    }
+
+    if (!nameRegex.test(editForm.lastName.trim())) {
+      setAlertModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Last name can only contain letters, spaces, hyphens, and apostrophes'
+      })
+      return
+    }
+
+    // Check for duplicate email (only if email is being changed)
+    if (editForm.email.trim().toLowerCase() !== editingUser.email.toLowerCase()) {
+      const existingUser = users.find(user => 
+        user.email.toLowerCase() === editForm.email.trim().toLowerCase() && 
+        user._id !== editingUser._id
+      )
+      
+      if (existingUser) {
+        setAlertModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Validation Error',
+          message: 'This email address is already in use by another user'
+        })
+        return
+      }
     }
 
     try {
@@ -360,11 +561,39 @@ const AdminDashboard = () => {
       await refreshActivityData()
       
       // Success feedback
-      alert('User updated successfully!')
+      setAlertModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Success',
+        message: 'User updated successfully!'
+      })
       
     } catch (error) {
       console.error('Error updating user:', error)
-      alert('Failed to update user: ' + (error.message || 'Unknown error'))
+      
+      // Handle specific error messages from the backend
+      if (error.message && error.message.includes('cannot change your own role')) {
+        setAlertModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Permission Denied',
+          message: 'You cannot change your own role. Ask another admin to do it.'
+        })
+      } else if (error.message && error.message.includes('cannot deactivate your own account')) {
+        setAlertModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Permission Denied',
+          message: 'You cannot deactivate your own account. Ask another admin to do it.'
+        })
+      } else {
+        setAlertModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Update Failed',
+          message: 'Failed to update user: ' + (error.message || 'Unknown error')
+        })
+      }
     } finally {
       setEditSaving(false)
     }
@@ -379,6 +608,11 @@ const AdminDashboard = () => {
       email: '',
       role: 'user',
       isActive: true
+    })
+    setFieldErrors({
+      firstName: '',
+      lastName: '',
+      email: ''
     })
   }
 
@@ -460,35 +694,35 @@ const AdminDashboard = () => {
       <div className="admin-header">
         <div className="header-content">
           <div className="header-left">
-            <h1 className="admin-title">
-              <Shield size={28} />
-              Admin Dashboard
-            </h1>
-            <p className="admin-subtitle">Manage users, monitor system health, and view analytics</p>
+            <div className="logo-section">
+              <Shield size={32} />
+              <div className="logo-text">
+                <h1 className="admin-title">Admin Dashboard</h1>
+                <p className="admin-subtitle">Manage users, monitor system health, and view analytics</p>
+              </div>
+            </div>
           </div>
-          <div className="header-actions">
+          <div className="header-center">
             {error && (
               <div className="error-indicator" title={error}>
                 <AlertTriangle size={16} />
                 <span>Some services unavailable</span>
               </div>
             )}
-            <button 
-              className="btn-secondary"
-              onClick={() => navigate('/dashboard')}
-              title="Switch to User Dashboard"
-            >
-              <Eye size={20} />
-              User View
-            </button>
-            <button 
-              className={`refresh-btn ${loading ? 'loading' : ''}`}
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw size={20} className={loading ? 'spinning' : ''} />
-              Refresh
-            </button>
+          </div>
+          <div className="header-right">
+            <div className="user-info">
+              <div className="user-avatar">
+                {authService.getCurrentUser()?.firstName?.[0] || 'A'}
+                {authService.getCurrentUser()?.lastName?.[0] || 'D'}
+              </div>
+              <div className="user-details">
+                <span className="user-name">
+                  {authService.getCurrentUser()?.firstName || 'Admin'} {authService.getCurrentUser()?.lastName || 'User'}
+                </span>
+                <span className="user-role">Administrator</span>
+              </div>
+            </div>
             <button 
               className="logout-btn"
               onClick={handleLogout}
@@ -967,10 +1201,6 @@ const AdminDashboard = () => {
                     <Download size={20} />
                     Export
                   </button>
-                  <button className="btn-primary" onClick={() => alert('Add User functionality coming soon!')}>
-                    <Plus size={20} />
-                    Add User
-                  </button>
                 </div>
               </div>
             </div>
@@ -1120,15 +1350,10 @@ const AdminDashboard = () => {
                         </div>
                       </td>
                       <td>
-                        <select
-                          value={user.role || 'user'}
-                          onChange={(e) => handleUserUpdate(user._id, { role: e.target.value })}
-                          className={`role-select ${user.role || 'user'}`}
-                        >
-                          <option value="user">User</option>
-                          <option value="moderator">Moderator</option>
-                          <option value="admin">Admin</option>
-                        </select>
+                        <div className={`role-badge ${user.role || 'user'}`}>
+                          <Shield size={16} />
+                          {(user.role || 'user').charAt(0).toUpperCase() + (user.role || 'user').slice(1)}
+                        </div>
                       </td>
                       <td>
                         <button
@@ -1231,7 +1456,15 @@ const AdminDashboard = () => {
                         onChange={(e) => handleEditFormChange('firstName', e.target.value)}
                         placeholder="Enter first name"
                         required
+                        minLength="2"
+                        maxLength="50"
+                        pattern="[a-zA-Z\s\-']+"
+                        title="First name can only contain letters, spaces, hyphens, and apostrophes"
+                        className={fieldErrors.firstName ? 'error' : ''}
                       />
+                      {fieldErrors.firstName && (
+                        <div className="field-error">{fieldErrors.firstName}</div>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Last Name <span className="required">*</span></label>
@@ -1241,7 +1474,15 @@ const AdminDashboard = () => {
                         onChange={(e) => handleEditFormChange('lastName', e.target.value)}
                         placeholder="Enter last name"
                         required
+                        minLength="2"
+                        maxLength="50"
+                        pattern="[a-zA-Z\s\-']+"
+                        title="Last name can only contain letters, spaces, hyphens, and apostrophes"
+                        className={fieldErrors.lastName ? 'error' : ''}
                       />
+                      {fieldErrors.lastName && (
+                        <div className="field-error">{fieldErrors.lastName}</div>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Email <span className="required">*</span></label>
@@ -1251,7 +1492,13 @@ const AdminDashboard = () => {
                         onChange={(e) => handleEditFormChange('email', e.target.value)}
                         placeholder="Enter email address"
                         required
+                        maxLength="100"
+                        title="Please enter a valid email address"
+                        className={fieldErrors.email ? 'error' : ''}
                       />
+                      {fieldErrors.email && (
+                        <div className="field-error">{fieldErrors.email}</div>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Role</label>
@@ -1352,6 +1599,15 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        type={alertModal.type}
+        title={alertModal.title}
+        message={alertModal.message}
+      />
     </div>
   )
 }

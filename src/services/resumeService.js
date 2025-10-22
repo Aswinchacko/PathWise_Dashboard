@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Resume Parser Microservice URL
-const API_BASE_URL = 'http://127.0.0.1:8001'
+const API_BASE_URL = 'http://127.0.0.1:8005'
 
 // Create axios instance with default config
 const api = axios.create({

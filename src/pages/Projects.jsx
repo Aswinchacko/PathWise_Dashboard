@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Search, Filter, Heart, Lock, Lightbulb, Star, Target, Loader2 } from 'lucide-react'
+import { Search, Filter, Heart, Lightbulb, Star, Target, Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import './Projects.css'
 
@@ -39,20 +39,9 @@ const Projects = () => {
         const phaseBasedProjects = data.projects.filter(p => p.phase)
         const regularProjects = data.projects.filter(p => !p.phase)
         
-        // Add unlocked status to projects from API (first one is unlocked)
-        const regularProjectsWithStatus = regularProjects.map((p, index) => ({
-          ...p,
-          unlocked: index === 0 // First project is unlocked
-        }))
-        
-        const phaseProjectsWithStatus = phaseBasedProjects.map(p => ({
-          ...p,
-          unlocked: true // Phase-based projects are always unlocked
-        }))
-        
-        setAllProjects(regularProjectsWithStatus)
-        setPhaseProjects(phaseProjectsWithStatus)
-        setRecommendations(regularProjectsWithStatus.slice(0, 6)) // Show first 6 initially
+        setAllProjects(regularProjects)
+        setPhaseProjects(phaseBasedProjects)
+        setRecommendations(regularProjects.slice(0, 6)) // Show first 6 initially
       }
     } catch (error) {
       console.error('Error fetching projects:', error)
@@ -76,12 +65,7 @@ const Projects = () => {
       
       const data = await response.json()
       if (data.success) {
-        // Add unlocked status to recommended projects
-        const projectsWithStatus = data.recommendations.map((p, index) => ({
-          ...p,
-          unlocked: index === 0 // First recommended project is unlocked
-        }))
-        setRecommendations(projectsWithStatus)
+        setRecommendations(data.recommendations)
         setRecommendationMethod(data.method)
       }
     } catch (error) {
@@ -217,7 +201,7 @@ const Projects = () => {
                   <span className="phase-name">{project.phase}</span>
                 </div>
                 <div className="project-image">
-                  <div className="image-placeholder phase-based">
+                  <div className="image-placeholder">
                     <Target size={24} />
                   </div>
                 </div>
@@ -243,7 +227,7 @@ const Projects = () => {
                   </div>
                   <div className="project-actions">
                     <button className="btn btn-primary">
-                      Start Project
+                      View Details
                     </button>
                     <button className="like-btn">
                       <Heart size={16} />
@@ -332,15 +316,9 @@ const Projects = () => {
                     transition={{ delay: 0.3 + index * 0.1 }}
                   >
                     <div className="project-image">
-                      {project.unlocked ? (
-                        <div className="image-placeholder unlocked">
-                          <Star size={24} />
-                        </div>
-                      ) : (
-                        <div className="image-placeholder locked">
-                          <Lock size={24} />
-                        </div>
-                      )}
+                      <div className="image-placeholder">
+                        <Star size={24} />
+                      </div>
                     </div>
                     <div className="project-content">
                       <h4>{project.title}</h4>
@@ -364,7 +342,7 @@ const Projects = () => {
                       </div>
                       <div className="project-actions">
                         <button className="btn btn-primary">
-                          {project.unlocked ? 'Start Project' : 'Unlock'}
+                          View Details
                         </button>
                         <button className="like-btn">
                           <Heart size={16} />
@@ -394,8 +372,8 @@ const Projects = () => {
                       transition={{ delay: 0.5 + index * 0.1 }}
                     >
                       <div className="project-image">
-                        <div className="image-placeholder locked">
-                          <Lock size={24} />
+                        <div className="image-placeholder">
+                          <Star size={24} />
                         </div>
                       </div>
                       <div className="project-content">
@@ -419,7 +397,7 @@ const Projects = () => {
                           )}
                         </div>
                         <div className="project-actions">
-                          <button className="btn btn-secondary">Unlock</button>
+                          <button className="btn btn-primary">View Details</button>
                           <button className="like-btn">
                             <Heart size={16} />
                           </button>

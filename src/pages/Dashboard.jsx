@@ -45,9 +45,14 @@ const Dashboard = () => {
 
   const [recentActivity, setRecentActivity] = useState([])
   const [systemStatus, setSystemStatus] = useState([])
+  const [analyticsData, setAnalyticsData] = useState({
+    trends: null,
+    domains: null
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [selectedPeriod, setSelectedPeriod] = useState(30)
 
   const quickActions = [
     { icon: Target, label: 'Generate Roadmap', description: 'Create personalized career paths', color: '#10b981', href: '/roadmap' },
@@ -72,10 +77,12 @@ const Dashboard = () => {
       setError(null)
 
       // Fetch all data in parallel
-      const [statsData, activityData, statusData] = await Promise.allSettled([
+      const [statsData, activityData, statusData, trendsData, domainsData] = await Promise.allSettled([
         dashboardService.getDashboardStats(),
         dashboardService.getRecentActivity(),
-        dashboardService.getSystemStatus()
+        dashboardService.getSystemStatus(),
+        dashboardService.getAnalyticsTrends(selectedPeriod),
+        dashboardService.getDomainAnalytics()
       ])
 
       // Update stats
@@ -94,8 +101,17 @@ const Dashboard = () => {
         setSystemStatus(statusData.value)
       }
 
+      // Update analytics data
+      if (trendsData.status === 'fulfilled') {
+        setAnalyticsData(prev => ({ ...prev, trends: trendsData.value }))
+      }
+
+      if (domainsData.status === 'fulfilled') {
+        setAnalyticsData(prev => ({ ...prev, domains: domainsData.value }))
+      }
+
       // Check for any errors
-      const errors = [statsData, activityData, statusData]
+      const errors = [statsData, activityData, statusData, trendsData, domainsData]
         .filter(result => result.status === 'rejected')
         .map(result => result.reason.message)
 
@@ -115,6 +131,44 @@ const Dashboard = () => {
   const handleRefresh = () => {
     dashboardService.clearCache()
     loadDashboardData()
+  }
+
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period)
+    dashboardService.clearCache()
+    loadDashboardData()
+  }
+
+  // Format chart data
+  const formatChartData = () => {
+    if (!analyticsData.trends) return null
+
+    const { daily_roadmaps, domain_trends, user_activity } = analyticsData.trends
+
+    // Format daily roadmaps data
+    const dailyData = daily_roadmaps.map(item => ({
+      date: `${item._id.year}-${String(item._id.month).padStart(2, '0')}-${String(item._id.day).padStart(2, '0')}`,
+      roadmaps: item.count
+    }))
+
+    // Format domain trends data
+    const domainData = domain_trends.reduce((acc, item) => {
+      const domain = item._id.domain
+      if (!acc[domain]) acc[domain] = []
+      acc[domain].push({
+        date: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
+        count: item.count
+      })
+      return acc
+    }, {})
+
+    // Format user activity data
+    const userData = user_activity.map(item => ({
+      date: `${item._id.year}-${String(item._id.month).padStart(2, '0')}-${String(item._id.day).padStart(2, '0')}`,
+      users: item.unique_users
+    }))
+
+    return { dailyData, domainData, userData }
   }
 
   return (
@@ -366,19 +420,134 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Charts Placeholder */}
+          {/* Analytics Charts */}
           <div className="dashboard-card chart-card">
             <div className="card-header">
               <h2 className="card-title">Usage Analytics</h2>
               <div className="chart-controls">
-                <button className="btn-text">7D</button>
-                <button className="btn-text active">30D</button>
-                <button className="btn-text">90D</button>
+                <button 
+                  className={`btn-text ${selectedPeriod === 7 ? 'active' : ''}`}
+                  onClick={() => handlePeriodChange(7)}
+                >
+                  7D
+                </button>
+                <button 
+                  className={`btn-text ${selectedPeriod === 30 ? 'active' : ''}`}
+                  onClick={() => handlePeriodChange(30)}
+                >
+                  30D
+                </button>
+                <button 
+                  className={`btn-text ${selectedPeriod === 90 ? 'active' : ''}`}
+                  onClick={() => handlePeriodChange(90)}
+                >
+                  90D
+                </button>
               </div>
             </div>
-            <div className="chart-placeholder">
-              <BarChart3 size={48} />
-              <p>Chart visualization will be implemented here</p>
+            <div className="analytics-content">
+              {loading ? (
+                <div className="chart-loading">
+                  <div className="loading-skeleton" style={{ width: '100%', height: '200px', borderRadius: '8px' }}></div>
+                </div>
+              ) : analyticsData.trends ? (
+                <div className="charts-grid">
+                  {/* Daily Roadmaps Chart */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">Daily Roadmap Creation</h3>
+                    <div className="chart-container">
+                      {formatChartData()?.dailyData?.length > 0 ? (
+                        <div className="simple-chart">
+                          {formatChartData().dailyData.slice(-14).map((item, index) => (
+                            <div key={index} className="chart-bar">
+                              <div 
+                                className="bar-fill"
+                                style={{ 
+                                  height: `${Math.max((item.roadmaps / Math.max(...formatChartData().dailyData.map(d => d.roadmaps))) * 100, 5)}%`,
+                                  backgroundColor: '#667eea'
+                                }}
+                              ></div>
+                              <span className="bar-label">{item.date.split('-')[2]}</span>
+                              <span className="bar-value">{item.roadmaps}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="no-data">
+                          <BarChart3 size={32} />
+                          <p>No data available for selected period</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Domain Distribution */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">Top Domains</h3>
+                    <div className="chart-container">
+                      {analyticsData.domains?.domains?.length > 0 ? (
+                        <div className="domain-list">
+                          {analyticsData.domains.domains.slice(0, 5).map((domain, index) => (
+                            <div key={index} className="domain-item">
+                              <div className="domain-info">
+                                <span className="domain-name">{domain.domain}</span>
+                                <span className="domain-count">{domain.total_roadmaps} roadmaps</span>
+                              </div>
+                              <div className="domain-bar">
+                                <div 
+                                  className="domain-bar-fill"
+                                  style={{ 
+                                    width: `${(domain.total_roadmaps / analyticsData.domains.domains[0].total_roadmaps) * 100}%`,
+                                    backgroundColor: `hsl(${index * 60}, 70%, 50%)`
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="no-data">
+                          <PieChart size={32} />
+                          <p>No domain data available</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* User Activity */}
+                  <div className="chart-section">
+                    <h3 className="chart-title">User Activity</h3>
+                    <div className="chart-container">
+                      {formatChartData()?.userData?.length > 0 ? (
+                        <div className="activity-stats">
+                          <div className="stat-item">
+                            <span className="stat-label">Active Users (Last 30 days)</span>
+                            <span className="stat-value">{stats.totalUsers}</span>
+                          </div>
+                          <div className="stat-item">
+                            <span className="stat-label">User Generated Roadmaps</span>
+                            <span className="stat-value">{stats.userGeneratedRoadmaps || 0}</span>
+                          </div>
+                          <div className="stat-item">
+                            <span className="stat-label">Recent Activity (30d)</span>
+                            <span className="stat-value">{stats.recentRoadmaps30d || 0}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="no-data">
+                          <Users size={32} />
+                          <p>No user activity data</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="chart-placeholder">
+                  <BarChart3 size={48} />
+                  <p>Analytics data unavailable</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

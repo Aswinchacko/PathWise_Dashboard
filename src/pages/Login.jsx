@@ -8,10 +8,7 @@ import {
   Lock, 
   ArrowRight, 
   AlertCircle,
-  CheckCircle,
-  Github,
-  Linkedin,
-  Twitter
+  CheckCircle
 } from 'lucide-react'
 import authService from '../services/authService'
 import './Login.css'
@@ -50,23 +47,39 @@ const Login = () => {
     document.head.appendChild(script)
 
     script.onload = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your_google_client_id_here',
-          callback: handleGoogleSignIn
-        })
-        
-        window.google.accounts.id.renderButton(
-          document.getElementById('google-signin-button'),
-          { 
-            theme: 'outline', 
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-            width: '100%'
+      if (window.google && window.google.accounts) {
+        try {
+          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+          
+          if (!clientId || clientId === 'your_google_client_id_here') {
+            console.error('Google Client ID not configured. Please set VITE_GOOGLE_CLIENT_ID in .env file')
+            return
           }
-        )
+          
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleSignIn
+          })
+          
+          // Only render button if the element exists
+          const buttonElement = document.getElementById('google-signin-button')
+          if (buttonElement) {
+            window.google.accounts.id.renderButton(buttonElement, { 
+              theme: 'outline', 
+              size: 'large',
+              text: 'signin_with',
+              shape: 'rectangular',
+              width: '100%'
+            })
+          }
+        } catch (error) {
+          console.error('Google Sign-In initialization error:', error)
+        }
       }
+    }
+
+    script.onerror = () => {
+      console.error('Failed to load Google Sign-In script')
     }
 
     return () => {
@@ -292,39 +305,6 @@ const Login = () => {
     }
   }
 
-  const handleSocialLogin = (provider) => {
-    if (provider === 'github') {
-      handleGitHubLogin()
-    } else if (provider === 'linkedin') {
-      handleLinkedInLogin()
-    } else {
-      console.log(`Logging in with ${provider}`)
-    }
-  }
-
-  const handleGitHubLogin = () => {
-    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'your_github_client_id_here'
-    const redirectUri = `${window.location.origin}/auth/github/callback`
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`
-    
-    // Store the current URL to redirect back after GitHub auth
-    localStorage.setItem('github_redirect', window.location.pathname)
-    
-    // Redirect to GitHub OAuth
-    window.location.href = githubAuthUrl
-  }
-
-  const handleLinkedInLogin = () => {
-    const clientId = import.meta.env.VITE_LINKEDIN_CLIENT_ID || 'your_linkedin_client_id_here'
-    const redirectUri = `${window.location.origin}/auth/linkedin/callback`
-    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=r_liteprofile%20r_emailaddress`
-    
-    // Store the current URL to redirect back after LinkedIn auth
-    localStorage.setItem('linkedin_redirect', window.location.pathname)
-    
-    // Redirect to LinkedIn OAuth
-    window.location.href = linkedinAuthUrl
-  }
 
   return (
     <div className="auth-page">
@@ -497,33 +477,13 @@ const Login = () => {
             {/* Google Sign-In Button */}
             <div className="google-signin-container">
               <div id="google-signin-button"></div>
+              {(!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID === 'your_google_client_id_here') && (
+                <div className="google-auth-disabled">
+                  <p>Google Sign-In is not configured</p>
+                </div>
+              )}
             </div>
 
-            <div className="social-login">
-              <motion.button
-                type="button"
-                className="social-btn github"
-                onClick={() => handleSocialLogin('github')}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                disabled={isLoading}
-              >
-                <Github size={20} />
-                GitHub
-              </motion.button>
-              
-              <motion.button
-                type="button"
-                className="social-btn linkedin"
-                onClick={() => handleSocialLogin('linkedin')}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                disabled={isLoading}
-              >
-                <Linkedin size={20} />
-                LinkedIn
-              </motion.button>
-            </div>
 
             <div className="auth-footer">
               <p>

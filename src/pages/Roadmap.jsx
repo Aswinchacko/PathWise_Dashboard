@@ -154,6 +154,19 @@ const Roadmap = () => {
       }
       localStorage.setItem('current_goal', JSON.stringify(goalData))
       
+      // Save for job recommendations
+      const roadmapData = {
+        goal: goal,
+        domain: response.domain,
+        title: goal,
+        name: goal
+      }
+      localStorage.setItem('selectedRoadmap', JSON.stringify(roadmapData))
+      
+      // Notify other components (like Jobs page) that roadmap changed
+      window.dispatchEvent(new CustomEvent('roadmapChanged', { detail: roadmapData }))
+      console.log('🔄 New roadmap generated, notifying Jobs page...', goal)
+      
       // Clear completion state for new roadmap
       setCompletedIds(new Set())
       setCompletedTopics([])
@@ -188,8 +201,21 @@ const Roadmap = () => {
     setCurrentDomain(roadmap.domain)
     setShowSavedRoadmaps(false)
     
+    // Save current roadmap for job recommendations
+    const roadmapData = {
+      goal: roadmap.goal,
+      domain: roadmap.domain,
+      title: roadmap.goal,
+      name: roadmap.goal
+    }
+    localStorage.setItem('selectedRoadmap', JSON.stringify(roadmapData))
+    
     // Save current roadmap goal for mentor recommendations
     mentorService.saveCurrentRoadmapGoal(roadmap.goal, roadmap.domain)
+    
+    // Notify other components (like Jobs page) that roadmap changed
+    window.dispatchEvent(new CustomEvent('roadmapChanged', { detail: roadmapData }))
+    console.log('🔄 Roadmap changed, notifying Jobs page...', roadmap.goal)
     
     // Clear completion state when loading a different roadmap
     setCompletedIds(new Set())

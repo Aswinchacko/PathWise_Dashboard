@@ -19,6 +19,7 @@ import GitHubCallback from './pages/GitHubCallback'
 import LinkedInCallback from './pages/LinkedInCallback'
 import SubscriptionSuccess from './pages/SubscriptionSuccess'
 import SubscriptionCancel from './pages/SubscriptionCancel'
+import Subscription from './pages/Subscription'
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
@@ -102,6 +103,14 @@ function App() {
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
             <Community />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/subscription" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <Subscription />
           </Layout>
         </ProtectedRoute>
       } />

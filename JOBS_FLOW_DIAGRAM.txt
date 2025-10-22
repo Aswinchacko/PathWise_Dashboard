@@ -1,0 +1,227 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                      JOBS PAGE - CLEAN ARCHITECTURE                           ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            📱 USER INTERFACE                                 │
+│                           (Jobs.jsx - 86 lines)                              │
+│                                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │   Header     │  │  Search Bar  │  │  Job Cards   │  │  Actions     │   │
+│  │   + Refresh  │  │  + Button    │  │  + Stats     │  │  + Links     │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                                              │
+│  State: jobs, loading, error, searchQuery, jobStats                         │
+│  Handlers: handleFetchUserJobs(), handleSearchJobs()                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       ↓
+                          ┌────────────────────────┐
+                          │   Import Service       │
+                          │   searchJobs()         │
+                          │   getUserRoadmap()     │
+                          └────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          🔧 SERVICE LAYER                                    │
+│                    (jobSearchService.js - 220 lines)                         │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  searchJobs(query) [MAIN FUNCTION]                                  │   │
+│  │      ↓                                                               │   │
+│  │  1. searchJobsWithSerper(query)                                     │   │
+│  │      → Fetch from Google via Serper API                             │   │
+│  │      → Returns search results                                       │   │
+│  │                                                                      │   │
+│  │  2. extractJobsWithGroq(searchResults)                              │   │
+│  │      → Send to Groq AI for extraction                               │   │
+│  │      → Parse structured job data                                    │   │
+│  │      → Fallback if AI fails                                         │   │
+│  │                                                                      │   │
+│  │  3. transformJobsForDisplay(extractedJobs)                          │   │
+│  │      → Format for UI rendering                                      │   │
+│  │      → Add display properties                                       │   │
+│  │                                                                      │   │
+│  │  4. Return { success, jobs, total, sources, aiMatched }            │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  Helper Functions:                                                           │
+│  • getUserRoadmap()           • createJobExtractionPrompt()                  │
+│  • createFallbackJobs()       • getSourceFromUrl()                           │
+│  • extractCompanyFromTitle()                                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       ↓
+                          ┌────────────────────────┐
+                          │   Uses Config          │
+                          │   API_CONFIG           │
+                          │   JOB_SOURCES          │
+                          └────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          ⚙️  CONFIGURATION                                   │
+│                         (config/api.js - 20 lines)                           │
+│                                                                              │
+│  API_CONFIG:                                                                 │
+│  ├─ SERPER_API_KEY: 'a8df1a33...'                                           │
+│  ├─ GROQ_API_KEY: 'gsk_P3ymA0...'                                           │
+│  ├─ SERPER_API_URL: 'https://google.serper.dev/search'                      │
+│  └─ GROQ_API_URL: 'https://api.groq.com/openai/v1/chat/completions'         │
+│                                                                              │
+│  JOB_SOURCES:                                                                │
+│  ├─ LINKEDIN: 'linkedin.com'                                                 │
+│  ├─ INDEED: 'indeed.com'                                                     │
+│  └─ GLASSDOOR: 'glassdoor.com'                                               │
+│                                                                              │
+│  SEARCH_CONFIG:                                                              │
+│  ├─ MAX_RESULTS: 20                                                          │
+│  ├─ DISPLAY_LIMIT: 12                                                        │
+│  ├─ TEMPERATURE: 0.1                                                         │
+│  └─ MAX_TOKENS: 4000                                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       ↓
+                          ┌────────────────────────┐
+                          │   External APIs        │
+                          └────────────────────────┘
+                                       ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          🌐 EXTERNAL APIS                                    │
+│                                                                              │
+│  ┌──────────────────────────┐         ┌─────────────────────────────┐      │
+│  │   SERPER API             │         │   GROQ AI API                │      │
+│  │   (Google Search)        │         │   (Data Extraction)          │      │
+│  │                          │         │                              │      │
+│  │  POST /search            │         │  POST /chat/completions      │      │
+│  │  Body: {                 │         │  Body: {                     │      │
+│  │    q: "React jobs...",   │         │    model: "mixtral-8x7b...", │      │
+│  │    num: 20               │         │    messages: [...],          │      │
+│  │  }                       │         │    temperature: 0.1          │      │
+│  │                          │         │  }                           │      │
+│  │  Returns:                │         │                              │      │
+│  │  { organic: [...] }      │         │  Returns:                    │      │
+│  │                          │         │  { choices: [{message}] }    │      │
+│  └──────────────────────────┘         └─────────────────────────────┘      │
+│           │                                       │                         │
+│           └───────────────┬───────────────────────┘                         │
+│                           ↓                                                  │
+│                   ┌───────────────┐                                          │
+│                   │  Job Sources  │                                          │
+│                   ├───────────────┤                                          │
+│                   │  • LinkedIn   │                                          │
+│                   │  • Indeed     │                                          │
+│                   │  • Glassdoor  │                                          │
+│                   └───────────────┘                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                              DATA FLOW                                        ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+1. USER ACTION
+   └─ User types "React Developer" and clicks Search
+        ↓
+2. UI HANDLER (Jobs.jsx)
+   └─ handleSearchJobs() called
+        ↓
+3. SERVICE CALL
+   └─ searchJobs("React Developer")
+        ↓
+4. GOOGLE SEARCH (Serper API)
+   └─ searchJobsWithSerper("React Developer")
+   └─ Returns: { organic: [20 search results] }
+        ↓
+5. AI EXTRACTION (Groq API)
+   └─ extractJobsWithGroq(searchResults)
+   └─ AI extracts: [12 structured job objects]
+        ↓
+6. TRANSFORM DATA
+   └─ transformJobsForDisplay(jobs)
+   └─ Formats: [12 display-ready jobs]
+        ↓
+7. RETURN TO UI
+   └─ { success: true, jobs: [...], total: 12, sources: [...] }
+        ↓
+8. UPDATE STATE (Jobs.jsx)
+   └─ setJobs(result.jobs)
+   └─ setJobStats({...})
+        ↓
+9. RENDER UI
+   └─ Job cards displayed with "Apply Now" hyperlinks
+        ↓
+10. USER CLICKS "Apply Now"
+    └─ Opens job posting on LinkedIn/Indeed/Glassdoor
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                         ERROR HANDLING FLOW                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+Service Layer (jobSearchService.js):
+├─ searchJobsWithSerper() fails
+│   └─ Throws error → Caught by searchJobs()
+│
+├─ extractJobsWithGroq() fails
+│   └─ Falls back to createFallbackJobs()
+│   └─ Returns basic parsed jobs from search results
+│
+└─ searchJobs() fails
+    └─ Throws error → Caught by UI handler
+
+UI Layer (Jobs.jsx):
+└─ handleSearchJobs() catch block
+    └─ setError("Search failed. Please try again.")
+    └─ Display error message to user
+    └─ Console.error() for debugging
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                           FILE DEPENDENCIES                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+Jobs.jsx
+  ├─ imports: searchJobs, getUserRoadmap
+  └─ from: ../services/jobSearchService
+
+jobSearchService.js
+  ├─ imports: API_CONFIG, JOB_SOURCES, SEARCH_CONFIG
+  └─ from: ../config/api
+
+api.js
+  └─ exports: API_CONFIG, JOB_SOURCES, SEARCH_CONFIG
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                         CODE METRICS COMPARISON                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+BEFORE (Monolithic):
+├─ Jobs.jsx: 400+ lines (mixed concerns)
+├─ API calls: Inline in component
+├─ Config: Hard-coded strings
+├─ Utils: Duplicate code
+└─ Testability: Difficult
+
+AFTER (Clean Architecture):
+├─ Jobs.jsx: 86 lines (UI only)
+├─ jobSearchService.js: 220 lines (business logic)
+├─ api.js: 20 lines (config)
+├─ dateFormatter.js: 15 lines (utils)
+└─ Testability: Easy
+
+Total Lines: ~341 (organized) vs 400+ (messy)
+But infinitely more maintainable! ✨
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                              BENEFITS                                         ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+✅ Separation of Concerns    → Each file has one job
+✅ Easy Testing             → Test service independently
+✅ Reusable Code            → Import service anywhere
+✅ Clean Component          → UI code is readable
+✅ Centralized Config       → Update APIs in one place
+✅ Error Handling           → Comprehensive fallbacks
+✅ Logging                  → Debug easily
+✅ Documentation            → Self-documenting code
+✅ Scalability              → Add features without breaking existing code
+✅ Maintainability          → Find and fix bugs quickly
+
+═══════════════════════════════════════════════════════════════════════════════
+                    🎉 PRODUCTION-READY ARCHITECTURE 🎉
+═══════════════════════════════════════════════════════════════════════════════
+

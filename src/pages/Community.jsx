@@ -4,6 +4,7 @@ import { Search, Plus } from 'lucide-react';
 import DiscussionList from '../components/community/DiscussionList';
 import CreateDiscussionModal from '../components/community/CreateDiscussionModal';
 import DiscussionDetailModal from '../components/community/DiscussionDetailModal';
+import SuccessModal from '../components/community/SuccessModal';
 import Sidebar from '../components/community/Sidebar';
 import AuthChecker from '../components/AuthChecker';
 import discussionService from '../services/discussionService';
@@ -13,6 +14,9 @@ const Community = () => {
   const [discussions, setDiscussions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedDiscussion, setSelectedDiscussion] = useState(null);
@@ -47,7 +51,8 @@ const Community = () => {
 
   const handleCreateDiscussion = async () => {
     if (!newDiscussion.title.trim() || !newDiscussion.description.trim()) {
-      alert('Please fill in both title and description');
+      setSuccessMessage('Please fill in both title and description');
+      setShowSuccessModal(true);
       return;
     }
 
@@ -56,11 +61,13 @@ const Community = () => {
       setDiscussions([discussion, ...discussions]);
       setNewDiscussion({ title: '', description: '', category: 'Web Development' });
       setShowCreateForm(false);
-      alert('Question posted successfully!');
+      setSuccessMessage('Question posted successfully!');
+      setShowSuccessModal(true);
     } catch (err) {
       setError('Failed to create discussion');
       console.error('Error creating discussion:', err);
-      alert('Failed to create question. Please make sure you are logged in.');
+      setSuccessMessage('Failed to create question. Please make sure you are logged in.');
+      setShowSuccessModal(true);
     }
   };
 
@@ -87,10 +94,13 @@ const Community = () => {
       }
       
       setNewComment('');
+      setSuccessMessage('Comment added successfully!');
+      setShowSuccessModal(true);
     } catch (err) {
       setError('Failed to add comment');
       console.error('Error adding comment:', err);
-      alert('Failed to add comment. Please make sure you are logged in.');
+      setSuccessMessage('Failed to add comment. Please make sure you are logged in.');
+      setShowSuccessModal(true);
     }
   };
 
@@ -114,12 +124,21 @@ const Community = () => {
     } catch (err) {
       setError('Failed to like discussion');
       console.error('Error liking discussion:', err);
-      alert('Failed to vote. Please make sure you are logged in.');
+      setSuccessMessage('Failed to vote. Please make sure you are logged in.');
+      setShowSuccessModal(true);
     }
   };
 
-  // No need for filtering since we're doing it on the backend
-  const filteredDiscussions = discussions;
+  // Filter discussions based on search query
+  const filteredDiscussions = discussions.filter(discussion => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      discussion.title.toLowerCase().includes(query) ||
+      discussion.description.toLowerCase().includes(query) ||
+      discussion.category.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <AuthChecker>
@@ -145,18 +164,34 @@ const Community = () => {
           />
         )}
 
+        <SuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          message={successMessage}
+          title={successMessage.includes('successfully') ? "Success!" : "Notice"}
+        />
+
         <header className="community-header">
-          <h1>All Questions</h1>
-          <p>Connect with fellow learners, ask questions, and share knowledge</p>
-          <div className="header-actions">
-            <div className="search-bar">
-              <Search size={18} />
-              <input type="text" placeholder="Search..." />
+          <div className="container">
+            <div>
+              <h1>Community</h1>
+              <p>Ask questions and share knowledge</p>
             </div>
-            <button className="create-discussion-btn" onClick={() => setShowCreateForm(true)}>
-              <Plus size={18} />
-              Ask Question
-            </button>
+            <div className="header-actions">
+              <div className="search-bar">
+                <Search size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Search discussions..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <button className="create-discussion-btn" onClick={() => setShowCreateForm(true)}>
+                <Plus size={16} />
+                Ask Question
+              </button>
+            </div>
           </div>
         </header>
 
@@ -166,7 +201,8 @@ const Community = () => {
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
           />
-          <main className="community-main">
+          
+          <div className="community-main">
             {loading ? (
               <div className="loading-state">
                 <div className="spinner"></div>
@@ -185,7 +221,7 @@ const Community = () => {
                 setSelectedDiscussion={setSelectedDiscussion}
               />
             )}
-          </main>
+          </div>
         </div>
       </div>
     </AuthChecker>

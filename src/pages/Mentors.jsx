@@ -34,7 +34,8 @@ const Mentors = () => {
   const [scrapingStats, setScrapingStats] = useState({
     total: 0,
     real: 0,
-    cached: false
+    cached: false,
+    searchSource: 'static' // 'ai', 'static', or 'web'
   })
 
   useEffect(() => {
@@ -81,7 +82,8 @@ const Mentors = () => {
         setScrapingStats({
           total: data.total_found,
           real: data.total_found,
-          cached: data.cached
+          cached: data.cached,
+          searchSource: data.search_source || 'static'
         })
       } else {
         setError(data.message || 'No mentors found')
@@ -187,10 +189,10 @@ const Mentors = () => {
             <div className="roadmap-context">
               <Target className="context-icon" />
               <div className="context-text">
-                <div className="context-label">Finding mentors for:</div>
-                <div className="context-goal">{roadmapGoal}</div>
+                <div className="context-label">Finding mentors based on your goal:</div>
+                <div className="context-goal">"{roadmapGoal}"</div>
                 {roadmapDomain && (
-                  <span className="context-domain">{roadmapDomain}</span>
+                  <span className="context-domain">in {roadmapDomain}</span>
                 )}
               </div>
             </div>
@@ -200,15 +202,21 @@ const Mentors = () => {
           <div className="scraping-stats">
             <div className="stat-item highlight">
               <CheckCircle />
-              <span>{scrapingStats.real} Curated Recommendations</span>
+              <span>
+                {scrapingStats.real} {scrapingStats.searchSource === 'real' ? 'Real Profiles' : 
+                  scrapingStats.searchSource === 'ai' ? 'AI-Generated' : 'Curated'} Recommendations
+              </span>
             </div>
             <div className="stat-item">
-              <Linkedin />
-              <span>Click to Search on LinkedIn</span>
+              <ExternalLink />
+              <span>Found from Google Search</span>
             </div>
             <div className="stat-item">
               <Clock />
-              <span>{scrapingStats.cached ? 'Cached' : 'Freshly Generated'}</span>
+              <span>
+                {scrapingStats.cached ? 'Cached' : 
+                  scrapingStats.searchSource === 'ai' ? '🤖 AI Web Search' : 'Freshly Generated'}
+              </span>
             </div>
           </div>
         </div>
@@ -249,11 +257,15 @@ const Mentors = () => {
           <div>
             Showing <strong>{filteredMentors.length}</strong> of{' '}
             <strong>{mentors.length}</strong> mentors
-            {' '} | <span className="real-count">{scrapingStats.real} curated recommendations</span>
+            {' '} | <span className="real-count">
+              {scrapingStats.real} {scrapingStats.searchSource === 'real' ? '✓ Real profiles' : 
+                scrapingStats.searchSource === 'ai' ? '🤖 AI-generated' : 'curated'} recommendations
+            </span>
           </div>
           <div className="service-status">
             <span className="status-indicator online"></span>
-            Mentor Service Active
+            {scrapingStats.searchSource === 'real' ? '✓ Real Profiles Active' : 
+             scrapingStats.searchSource === 'ai' ? '🤖 AI Generation Active' : 'Mentor Service Active'}
           </div>
         </div>
       )}
@@ -263,10 +275,23 @@ const Mentors = () => {
         <div className="mentors-grid-new">
           {filteredMentors.map((mentor, index) => (
             <div key={index} className="mentor-card-new">
-              {/* Curated Badge */}
+              {/* Real/AI Badge with Source */}
               <div className="real-badge">
                 <CheckCircle className="badge-icon" />
-                Recommended
+                {mentor.is_real_profile ? (
+                  <>
+                    ✓ Real Profile
+                    {mentor.source_type && (
+                      <span className="source-type">
+                        {mentor.source_type === 'github' ? ' • GitHub' :
+                         mentor.source_type === 'linkedin' ? ' • LinkedIn' :
+                         mentor.source_type === 'blog' ? ' • Blog' :
+                         mentor.source_type === 'website' ? ' • Web' : ''}
+                      </span>
+                    )}
+                  </>
+                ) : 
+                 mentor.is_ai_generated ? '🤖 AI-Generated' : 'Recommended'}
               </div>
 
               {/* Card Header */}
@@ -368,16 +393,22 @@ const Mentors = () => {
               <div className="action-buttons-new">
                 <button 
                   className="btn-outline-new"
-                  onClick={() => handleViewProfile(mentor)}
-                  title="Search for this profile on LinkedIn"
+                  onClick={() => {
+                    if (mentor.profile_url) {
+                      window.open(mentor.profile_url, '_blank')
+                    } else {
+                      handleViewProfile(mentor)
+                    }
+                  }}
+                  title={mentor.is_real_profile ? "Visit profile" : "Search for this profile"}
                 >
                   <ExternalLink size={16} />
-                  Find on LinkedIn
+                  {mentor.is_real_profile ? 'View Profile' : 'Find on LinkedIn'}
                 </button>
                 <button 
                   className="btn-primary-new"
                   onClick={() => handleContactMentor(mentor)}
-                  title="Search and connect on LinkedIn"
+                  title="Search and connect"
                 >
                   <MessageCircle size={16} />
                   Connect

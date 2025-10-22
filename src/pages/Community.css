@@ -1,45 +1,74 @@
 :root {
-  --so-orange: #f48024;
-  --so-blue: #0077cc;
-  --so-dark-blue: #005999;
-  --so-black: #242729;
-  --so-gray: #6a737c;
-  --so-light-gray: #9199a1;
-  --so-bg: #f8f9f9;
-  --so-white: #ffffff;
-  --so-border: #d6d9dc;
-  --so-hover: #f1f2f3;
-  --so-green: #5eba7d;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-light: #60a5fa;
+  --secondary: #6366f1;
+  --accent: #f59e0b;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --border: #e5e7eb;
+  --border-light: #f3f4f6;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --radius: 0.5rem;
+  --radius-sm: 0.375rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 }
 
 .community-page {
-  background-color: var(--so-bg);
-  padding: 0;
+  background: var(--bg-secondary);
   min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 100%;
 }
 
 .community-header {
-  background: var(--so-white);
-  border-bottom: 1px solid var(--so-border);
-  padding: 1.5rem 3rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.community-header .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .community-header h1 {
-  font-size: 1.75rem;
-  font-weight: 400;
-  color: var(--so-black);
-  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
 }
 
 .community-header p {
-  color: var(--so-gray);
+  color: var(--text-secondary);
   font-size: 0.875rem;
-  margin: 0 0 1rem 0;
+  margin: 0;
+  font-weight: 400;
 }
 
 .header-actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 1rem;
 }
@@ -47,17 +76,18 @@
 .search-bar {
   display: flex;
   align-items: center;
-  background: var(--so-white);
+  background: var(--bg-primary);
   padding: 0.5rem 0.75rem;
-  border-radius: 3px;
-  border: 1px solid var(--so-border);
-  flex: 1;
-  max-width: 500px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  width: 300px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .search-bar:focus-within {
-  border-color: var(--so-blue);
-  box-shadow: 0 0 0 4px rgba(0, 119, 204, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-bar input {
@@ -67,86 +97,103 @@
   width: 100%;
   font-size: 0.875rem;
   margin-left: 0.5rem;
-  color: var(--so-black);
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.search-bar input::placeholder {
+  color: var(--text-muted);
 }
 
 .create-discussion-btn {
-  background-color: var(--so-blue);
+  background: var(--primary);
   color: white;
-  border: 1px solid var(--so-dark-blue);
-  padding: 0.625rem 0.875rem;
-  border-radius: 3px;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
   display: flex;
   align-items: center;
   gap: 0.375rem;
   cursor: pointer;
   font-size: 0.875rem;
-  font-weight: 400;
-  transition: background-color 0.1s ease;
+  font-weight: 600;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
 
 .create-discussion-btn:hover {
-  background-color: var(--so-dark-blue);
+  background: var(--primary-dark);
+  box-shadow: var(--shadow);
 }
 
 .community-body {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 0;
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 2rem;
+  align-items: start;
 }
 
 .community-sidebar {
-  background: var(--so-white);
-  border-right: 1px solid var(--so-border);
-  padding: 1.5rem 0;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
   position: sticky;
-  top: 0;
-  height: calc(100vh - 100px);
-  overflow-y: auto;
+  top: 100px;
+  height: fit-content;
 }
 
 .community-sidebar h4 {
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  margin: 0 1rem 0.75rem 1rem;
-  color: var(--so-gray);
-  letter-spacing: 0.5px;
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
 }
 
 .community-sidebar ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .community-sidebar li {
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
   cursor: pointer;
-  transition: all 0.1s ease;
-  color: var(--so-gray);
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
   font-size: 0.875rem;
-  border-left: 3px solid transparent;
+  border-radius: var(--radius);
+  font-weight: 500;
+  position: relative;
 }
 
 .community-sidebar li:hover {
-  background-color: var(--so-hover);
-  color: var(--so-black);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .community-sidebar li.active {
-  background-color: var(--so-hover);
-  color: var(--so-black);
+  background: var(--primary);
+  color: white;
   font-weight: 600;
-  border-left-color: var(--so-orange);
 }
 
 .community-main {
-  background: var(--so-white);
-  min-height: calc(100vh - 100px);
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
 }
 
 .discussions-list {
@@ -156,15 +203,16 @@
 
 .discussion-card {
   display: flex;
-  background: var(--so-white);
-  border-bottom: 1px solid var(--so-border);
-  padding: 1rem 1.5rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-light);
+  padding: 1.5rem;
   cursor: pointer;
-  transition: background-color 0.1s ease;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .discussion-card:hover {
-  background-color: var(--so-hover);
+  background: var(--bg-secondary);
 }
 
 .discussion-stats {
@@ -172,7 +220,8 @@
   flex-direction: column;
   gap: 0.75rem;
   min-width: 100px;
-  margin-right: 1rem;
+  margin-right: 1.5rem;
+  align-items: center;
 }
 
 .stat-item {
@@ -180,48 +229,58 @@
   flex-direction: column;
   align-items: center;
   font-size: 0.75rem;
-  color: var(--so-gray);
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .stat-number {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--so-black);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
 }
 
 .stat-item.has-answers .stat-number {
-  color: var(--so-green);
-  background: rgba(94, 186, 125, 0.1);
-  padding: 0.25rem 0.5rem;
-  border-radius: 3px;
-  border: 1px solid var(--so-green);
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--success);
+  font-size: 1rem;
 }
 
 .stat-item.has-votes .stat-number {
-  color: var(--so-orange);
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.1);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--warning);
+  font-size: 1rem;
 }
 
 .discussion-content {
   flex: 1;
+  min-width: 0;
 }
 
 .discussion-title {
   font-size: 1.125rem;
-  font-weight: 400;
-  color: var(--so-blue);
-  margin: 0 0 0.5rem 0;
-  line-height: 1.3;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+  transition: color 0.2s ease;
 }
 
 .discussion-title:hover {
-  color: var(--so-dark-blue);
+  color: var(--primary);
 }
 
 .discussion-description {
-  color: var(--so-gray);
+  color: var(--text-secondary);
   font-size: 0.875rem;
   line-height: 1.5;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -236,58 +295,64 @@
 }
 
 .tag {
-  background: #e1ecf4;
-  color: #39739d;
-  padding: 0.375rem 0.5rem;
-  border-radius: 3px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
-  font-weight: 400;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
 }
 
 .tag:hover {
-  background: #d0e3f1;
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 .discussion-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
 }
 
 .discussion-meta {
   display: flex;
   gap: 0.75rem;
-  color: var(--so-light-gray);
+  color: var(--text-muted);
   align-items: center;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
 }
 
 .user-avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 2px;
-  background: var(--so-blue);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .user-name {
-  color: var(--so-blue);
+  color: var(--primary);
   font-weight: 500;
+  transition: color 0.2s ease;
 }
 
 .user-name:hover {
-  color: var(--so-dark-blue);
+  color: var(--primary-dark);
 }
 
 .modal-overlay {
@@ -296,267 +361,355 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(36, 39, 41, 0.75);
+  background: rgba(17, 24, 39, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+/* Discussion detail modal should appear in front */
+.discussion-detail-modal {
+  z-index: 1100 !important;
+}
+
+.discussion-detail-modal .modal-overlay {
+  z-index: 1100 !important;
+}
+
+/* Specific override for discussion detail modal overlay */
+.modal-overlay:has(.discussion-detail-modal) {
+  z-index: 1100 !important;
 }
 
 .create-discussion-modal,
 .discussion-detail-modal {
-  background: var(--so-white);
-  border-radius: 3px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 800px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--so-border);
+  padding: 2rem;
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--so-bg);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
 }
 
 .modal-header h2 {
   margin: 0;
-  color: var(--so-black);
-  font-size: 1.5rem;
-  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .modal-header button {
-  background: none;
-  border: none;
-  font-size: 24px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  font-size: 1.5rem;
   cursor: pointer;
-  color: var(--so-gray);
-  width: 32px;
-  height: 32px;
+  color: var(--text-muted);
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
-  transition: background-color 0.1s ease;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  font-weight: 600;
 }
 
 .modal-header button:hover {
-  background-color: var(--so-hover);
+  background: var(--error);
+  color: white;
+  border-color: var(--error);
+  transform: scale(1.1);
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 2rem;
 }
 
 .modal-body label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: var(--so-black);
-  margin-bottom: 0.375rem;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
 }
 
 .modal-body input,
 .modal-body select,
 .modal-body textarea {
   width: 100%;
-  padding: 0.625rem;
-  border: 1px solid var(--so-border);
-  border-radius: 3px;
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
   font-family: inherit;
-  color: var(--so-black);
+  color: var(--text-primary);
   box-sizing: border-box;
+  transition: all 0.2s ease;
+  background: var(--bg-primary);
 }
 
 .modal-body input:focus,
 .modal-body select:focus,
 .modal-body textarea:focus {
   outline: none;
-  border-color: var(--so-blue);
-  box-shadow: 0 0 0 4px rgba(0, 119, 204, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+.modal-body textarea {
+  min-height: 120px;
+  resize: vertical;
 }
 
 .modal-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 1rem;
   justify-content: flex-end;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
 }
 
 .modal-actions button {
-  padding: 0.625rem 0.875rem;
-  border-radius: 3px;
-  border: 1px solid var(--so-border);
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
   cursor: pointer;
-  font-weight: 400;
-  font-size: 0.875rem;
-  background: var(--so-white);
-  color: var(--so-black);
-  transition: background-color 0.1s ease;
+  font-weight: 600;
+  font-size: 1rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  min-width: 120px;
 }
 
 .modal-actions button:hover {
-  background-color: var(--so-hover);
+  background: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .modal-actions button.primary {
-  background: var(--so-blue);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  border-color: var(--so-dark-blue);
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
 }
 
 .modal-actions button.primary:hover {
-  background: var(--so-dark-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 /* Discussion Detail Modal Specific */
 .discussion-detail-content {
-  background: var(--so-bg);
-  padding: 1.5rem;
-  border-radius: 3px;
-  margin-bottom: 1.5rem;
+  background: var(--bg-secondary);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 2rem;
+  border: 1px solid var(--border);
 }
 
 .discussion-detail-description {
-  color: var(--so-black);
-  font-size: 0.9375rem;
-  line-height: 1.6;
-  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
 }
 
 .discussion-detail-meta {
   display: flex;
-  gap: 1rem;
-  font-size: 0.75rem;
-  color: var(--so-light-gray);
-  padding-top: 1rem;
-  border-top: 1px solid var(--so-border);
+  gap: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
 }
 
 .vote-section {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .vote-btn {
-  background: none;
-  border: 1px solid var(--so-border);
-  width: 36px;
-  height: 36px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--so-gray);
-  transition: all 0.1s ease;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .vote-btn:hover {
-  background-color: var(--so-orange);
-  border-color: var(--so-orange);
+  background: var(--accent);
+  border-color: var(--accent);
   color: white;
+  transform: scale(1.1);
 }
 
 .vote-btn.voted {
-  background-color: var(--so-orange);
-  border-color: var(--so-orange);
+  background: var(--accent);
+  border-color: var(--accent);
   color: white;
+  box-shadow: var(--shadow);
 }
 
 .vote-count {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--so-black);
-  min-width: 40px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 60px;
   text-align: center;
 }
 
 /* Comments Section */
 .comments-section {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 
 .comments-section h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--so-black);
-  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .comment {
-  border-left: 2px solid var(--so-border);
-  padding: 1rem 0 1rem 1rem;
-  margin-bottom: 1rem;
+  border-left: 4px solid var(--border);
+  padding: 1.5rem 0 1.5rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--bg-primary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.comment::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
 }
 
 .comment:hover {
-  border-left-color: var(--so-orange);
+  border-left-color: var(--primary);
+  transform: translateX(8px);
+  box-shadow: var(--shadow-sm);
+}
+
+.comment:hover::before {
+  transform: scaleY(1);
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .comment-author {
-  font-weight: 600;
-  color: var(--so-blue);
-  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1rem;
 }
 
 .comment-date {
-  font-size: 0.75rem;
-  color: var(--so-light-gray);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .comment p {
-  color: var(--so-black);
-  font-size: 0.875rem;
-  line-height: 1.6;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.7;
   margin: 0;
 }
 
 .add-comment {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--so-border);
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--border);
 }
 
 .add-comment textarea {
-  min-height: 100px;
+  min-height: 120px;
+  margin-bottom: 1rem;
 }
 
 .add-comment button {
-  background-color: var(--so-blue);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  border: 1px solid var(--so-dark-blue);
-  padding: 0.625rem 0.875rem;
-  border-radius: 3px;
+  border: none;
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--radius);
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color 0.1s ease;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow);
 }
 
 .add-comment button:hover {
-  background-color: var(--so-dark-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .add-comment button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* Loading and Error States */
@@ -566,18 +719,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 2rem;
+  padding: 6rem 2rem;
   text-align: center;
 }
 
 .spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--so-border);
-  border-top: 4px solid var(--so-orange);
+  width: 64px;
+  height: 64px;
+  border: 4px solid var(--border);
+  border-top: 4px solid var(--primary);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 1rem;
+  animation: spin 1s linear infinite;
+  margin-bottom: 2rem;
 }
 
 @keyframes spin {
@@ -590,45 +743,155 @@
 }
 
 .loading-state p {
-  color: var(--so-gray);
-  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  font-weight: 500;
 }
 
 .error-state p {
-  color: #d1383d;
-  margin-bottom: 1rem;
-  font-size: 1rem;
+  color: var(--error);
+  margin-bottom: 2rem;
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
 .retry-btn {
-  background-color: var(--so-blue);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  border: 1px solid var(--so-dark-blue);
-  padding: 0.625rem 1.25rem;
-  border-radius: 3px;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: var(--radius);
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color 0.1s ease;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow);
 }
 
 .retry-btn:hover {
-  background-color: var(--so-dark-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 /* Empty state */
 .empty-state {
   text-align: center;
-  padding: 4rem 2rem;
-  color: var(--so-gray);
+  padding: 6rem 2rem;
+  color: var(--text-muted);
 }
 
 .empty-state h3 {
-  font-size: 1.25rem;
-  color: var(--so-black);
-  margin-bottom: 0.5rem;
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-weight: 700;
 }
 
 .empty-state p {
-  font-size: 0.9375rem;
-  margin-bottom: 1.5rem;
+  font-size: 1.125rem;
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .community-body {
+    grid-template-columns: 200px 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .community-body {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .community-sidebar {
+    position: static;
+    order: 2;
+  }
+  
+  .community-main {
+    order: 1;
+  }
+  
+  .community-header .container {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .search-bar {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .discussion-card {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .discussion-stats {
+    flex-direction: row;
+    justify-content: space-around;
+    min-width: auto;
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .community-header {
+    padding: 0.75rem 0;
+  }
+  
+  .community-header .container {
+    padding: 0 1rem;
+  }
+  
+  .community-header h1 {
+    font-size: 1.25rem;
+  }
+  
+  .search-bar {
+    padding: 0.375rem 0.5rem;
+  }
+  
+  .search-bar input {
+    font-size: 0.8125rem;
+  }
+  
+  .create-discussion-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+  
+  .community-sidebar {
+    padding: 1rem;
+  }
+  
+  .community-sidebar h4 {
+    font-size: 0.6875rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .community-sidebar li {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+  
+  .discussion-card {
+    padding: 0.75rem;
+  }
+  
+  .discussion-title {
+    font-size: 1rem;
+  }
+  
+  .discussion-description {
+    font-size: 0.8125rem;
+  }
 }

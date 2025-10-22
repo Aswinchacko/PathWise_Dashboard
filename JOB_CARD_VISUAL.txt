@@ -1,0 +1,176 @@
+
+═══════════════════════════════════════════════════════════════════
+                    🎨 NEW JOB CARD DESIGN
+═══════════════════════════════════════════════════════════════════
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ ┃ ← Animated gradient border
+┃                                                             ┃
+┃  2 days ago     ┏━━━━━┓                                    ┃
+┃                 ┃  🔷  ┃  Senior React Developer            ┃
+┃                 ┃  G   ┃  Google Inc.                       ┃
+┃                 ┗━━━━━┛  via LinkedIn                       ┃
+┃                         ↑ Gradient logo with shine         ┃
+┃                                                             ┃
+┃  ┌────────┐ ┌────────┐ ┌────────┐                        ┃
+┃  │ React  │ │ TypeScript │ │ Node.js │ ← Gradient tags   ┃
+┃  └────────┘ └────────┘ └────────┘                        ┃
+┃                                                             ┃
+┃  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   ┃
+┃  ┃ 📍 San Francisco, CA      💵 $150k - $200k       ┃   ┃
+┃  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   ┃
+┃          ↑ Location/Salary container                      ┃
+┃                                                             ┃
+┃  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   ┃
+┃  ┃           Apply Now  →                             ┃   ┃ ← Gradient button
+┃  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   ┃   with ripple effect
+┃                                                             ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+         ↑ Subtle shadow lifts on hover
+
+═══════════════════════════════════════════════════════════════════
+                       🎭 HOVER STATES
+═══════════════════════════════════════════════════════════════════
+
+CARD HOVER:
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ┃ ← Border appears!
+┃                                                             ┃
+┃    Card lifts up 4px ↑                                     ┃
+┃    Purple shadow glows                                      ┃
+┃    Border lights up                                         ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+                    Enhanced depth!
+
+BUTTON HOVER:
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃         Apply Now  → ⭕ Ripple effect!        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+    ↑ Button lifts, shadow expands
+
+TAG HOVER:
+┌────────┐       ┌────────┐
+│ React  │  →    │ React  │ ↑ Lifts 1px
+└────────┘       └────────┘
+                 Background darkens
+
+═══════════════════════════════════════════════════════════════════
+                      🌈 COLOR GRADIENTS
+═══════════════════════════════════════════════════════════════════
+
+TOP BORDER:
+████████████████████████████████████████
+Purple → Pink gradient sliding animation
+
+CARD BACKGROUND:
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+White → Light gray subtle gradient
+
+COMPANY LOGO:
+████████████████████
+Purple gradient with shine overlay
+
+BUTTON:
+████████████████████████████████████████
+Purple → Deep purple with glow
+
+SKILL TAGS:
+████████████████████
+Light purple → Purple gradient
+
+═══════════════════════════════════════════════════════════════════
+                      🎯 LOCKED STATE
+═══════════════════════════════════════════════════════════════════
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓┃
+┃▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓┃
+┃▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓┃
+┃▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓🔒 Locked▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓┃
+┃▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ Upgrade to unlock ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓┃
+┃▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓┃
+┃▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+        ↑ Gradient overlay with blur effect
+
+═══════════════════════════════════════════════════════════════════
+                   📱 RESPONSIVE LAYOUT
+═══════════════════════════════════════════════════════════════════
+
+DESKTOP (3-4 cards per row):
+┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐
+│ Card 1 │  │ Card 2 │  │ Card 3 │  │ Card 4 │
+└────────┘  └────────┘  └────────┘  └────────┘
+
+TABLET (2-3 cards per row):
+┌────────┐  ┌────────┐  ┌────────┐
+│ Card 1 │  │ Card 2 │  │ Card 3 │
+└────────┘  └────────┘  └────────┘
+
+MOBILE (1 card per row):
+┌──────────────────┐
+│     Card 1       │
+└──────────────────┘
+┌──────────────────┐
+│     Card 2       │
+└──────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+                    ✨ ANIMATION TIMELINE
+═══════════════════════════════════════════════════════════════════
+
+CARD LOAD:
+0ms    → Opacity 0, Y+20
+600ms  → Opacity 1, Y+0 ✓
+
+HOVER SEQUENCE:
+0ms    → Normal state
+50ms   → Border starts sliding
+300ms  → Border fully visible
+        Card lifted
+        Shadow expanded
+
+BUTTON CLICK:
+0ms    → Normal
+150ms  → Pressed down
+300ms  → Return to normal
+        Ripple expands and fades
+
+═══════════════════════════════════════════════════════════════════
+                     🎨 DESIGN FEATURES
+═══════════════════════════════════════════════════════════════════
+
+✅ Gradient backgrounds everywhere
+✅ Smooth cubic-bezier easing
+✅ Multi-layered shadows for depth
+✅ Animated rainbow border on hover
+✅ Company logo with gradient & shine
+✅ Skill tags with hover effects
+✅ Premium button with ripple
+✅ Location/salary container
+✅ Professional typography
+✅ Locked state with blur overlay
+✅ Fully responsive design
+✅ 60fps smooth animations
+✅ GPU-accelerated transforms
+✅ Modern color palette
+✅ Clean visual hierarchy
+
+═══════════════════════════════════════════════════════════════════
+                   🚀 PERFORMANCE METRICS
+═══════════════════════════════════════════════════════════════════
+
+⚡ CSS-only animations (no JS overhead)
+⚡ GPU-accelerated transforms
+⚡ Optimized transitions (300-600ms)
+⚡ Smooth 60fps experience
+⚡ Minimal repaints/reflows
+⚡ Efficient selector usage
+⚡ No layout thrashing
+
+═══════════════════════════════════════════════════════════════════
+
+       🎉 READY TO IMPRESS WITH PREMIUM JOB CARDS! 🎉
+
+═══════════════════════════════════════════════════════════════════
+

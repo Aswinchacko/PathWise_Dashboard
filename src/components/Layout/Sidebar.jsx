@@ -14,7 +14,9 @@ import {
   Upload,
   Globe,
   FolderOpen,
-  Shield
+  Shield,
+  Crown,
+  Zap
 } from 'lucide-react'
 import './Sidebar.css'
 import authService from '../../services/authService'
@@ -26,13 +28,14 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/roadmap', icon: Target, label: 'Roadmap' },
-    { path: '/projects', icon: FolderOpen, label: 'Projects' },
+    { path: '/projects', icon: FolderOpen, label: 'Projects', premium: true },
     { path: '/resume-parser', icon: Upload, label: 'Resume Parser' },
     { path: '/mentors', icon: Users, label: 'Mentors' },
     { path: '/jobs', icon: Briefcase, label: 'Jobs' },
     { path: '/chatbot', icon: MessageCircle, label: 'Chatbot' },
     { path: '/resources', icon: FileText, label: 'Resources' },
     { path: '/community', icon: Globe, label: 'Community' },
+    { path: '/subscription', icon: Zap, label: 'Subscription' },
     ...(isAdmin ? [{ path: '/admin', icon: Shield, label: 'Admin Panel' }] : []),
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]
@@ -81,7 +84,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
             >
               <NavLink
                 to={item.path}
-                className={`nav-item ${isActive ? 'active' : ''}`}
+                className={`nav-item ${isActive ? 'active' : ''} ${item.premium ? 'premium-feature' : ''}`}
                 title={collapsed ? item.label : ''}
               >
                 <Icon size={20} />
@@ -93,6 +96,9 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                   >
                     {item.label}
                   </motion.span>
+                )}
+                {item.premium && (
+                  <Crown size={14} className="premium-badge" />
                 )}
               </NavLink>
             </motion.div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Lightbulb, Lock, MapPin, DollarSign, Calendar, Target, Sparkles, ExternalLink, TrendingUp } from 'lucide-react'
+import { Search, MapPin, DollarSign, Target, Sparkles, ExternalLink, TrendingUp, Lock } from 'lucide-react'
+import { searchJobs, getUserRoadmap } from '../services/jobSearchService'
 import './Jobs.css'
 
 const Jobs = () => {
@@ -14,69 +15,69 @@ const Jobs = () => {
     aiMatched: false
   })
 
-  // Get user ID from localStorage or auth context
-  const getUserId = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    return user.id || user._id || 'demo_user'
-  }
-
-  // Fetch jobs based on user's roadmap automatically on load
+  // Fetch jobs on component mount
   useEffect(() => {
-    fetchUserJobs()
+    handleFetchUserJobs()
   }, [])
 
-  const fetchUserJobs = async () => {
+  // Auto-refresh when roadmap changes
+  useEffect(() => {
+    const handleRoadmapChange = (e) => {
+      if (e.key === 'selectedRoadmap' && e.newValue !== e.oldValue) {
+        console.log('🔄 Roadmap changed, refreshing jobs...')
+        handleFetchUserJobs()
+      }
+    }
+
+    // Listen for localStorage changes (from other tabs)
+    window.addEventListener('storage', handleRoadmapChange)
+
+    // Listen for custom event (same tab)
+    const customHandler = () => {
+      console.log('🔄 Roadmap changed (same tab), refreshing jobs...')
+      handleFetchUserJobs()
+    }
+    window.addEventListener('roadmapChanged', customHandler)
+
+    return () => {
+      window.removeEventListener('storage', handleRoadmapChange)
+      window.removeEventListener('roadmapChanged', customHandler)
+    }
+  }, [])
+
+  /**
+   * Fetch jobs based on user's roadmap
+   */
+  const handleFetchUserJobs = async () => {
     setLoading(true)
     setError(null)
     
     try {
-      const userId = getUserId()
-      const response = await fetch(`http://localhost:5007/api/jobs/user/${userId}?limit=12`)
+      const roadmap = getUserRoadmap()
+      const query = roadmap || 'software developer'
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch jobs')
-      }
-
-      const data = await response.json()
+      const result = await searchJobs(query)
       
-      if (data.success) {
-        // Transform jobs for display
-        const transformedJobs = data.jobs.map((job, index) => ({
-          id: job.id || index,
-          title: job.title,
-          company: job.company,
-          location: job.location,
-          salary: job.salary || 'Competitive',
-          date: formatDate(job.posted_date),
-          unlocked: job.match_score ? job.match_score > 60 : true,
-          description: job.description,
-          logo: job.company ? job.company[0].toUpperCase() : '?',
-          url: job.url,
-          remote: job.remote,
-          matchScore: job.match_score,
-          matchReason: job.match_reason,
-          requirements: job.requirements || [],
-          source: job.source
-        }))
-
-        setJobs(transformedJobs)
-        setJobStats({
-          total: data.total,
-          sources: data.sources_used || [],
-          aiMatched: data.ai_matched
-        })
-      }
+      setJobs(result.jobs)
+      setJobStats({
+        total: result.total,
+        sources: result.sources,
+        aiMatched: result.aiMatched
+      })
     } catch (err) {
-      console.error('Error fetching jobs:', err)
-      setError('Failed to load jobs. Make sure the Job Agent service is running.')
+      console.error('❌ Error fetching jobs:', err)
+      setError('Failed to load jobs. Check console for API errors.')
     } finally {
       setLoading(false)
     }
   }
 
-  const searchJobs = async () => {
+  /**
+   * Search jobs based on user query
+   */
+  const handleSearchJobs = async () => {
     if (!searchQuery.trim()) {
-      fetchUserJobs()
+      handleFetchUserJobs()
       return
     }
 
@@ -84,83 +85,28 @@ const Jobs = () => {
     setError(null)
     
     try {
-      const userId = getUserId()
-      const response = await fetch('http://localhost:5007/api/jobs/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          query: searchQuery,
-          location: 'United States',
-          limit: 12,
-          use_ai_matching: true
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Search failed')
-      }
-
-      const data = await response.json()
+      const result = await searchJobs(searchQuery)
       
-      if (data.success) {
-        const transformedJobs = data.jobs.map((job, index) => ({
-          id: job.id || index,
-          title: job.title,
-          company: job.company,
-          location: job.location,
-          salary: job.salary || 'Competitive',
-          date: formatDate(job.posted_date),
-          unlocked: job.match_score ? job.match_score > 60 : true,
-          description: job.description,
-          logo: job.company ? job.company[0].toUpperCase() : '?',
-          url: job.url,
-          remote: job.remote,
-          matchScore: job.match_score,
-          matchReason: job.match_reason,
-          requirements: job.requirements || [],
-          source: job.source
-        }))
-
-        setJobs(transformedJobs)
-        setJobStats({
-          total: data.total,
-          sources: data.sources_used || [],
-          aiMatched: data.ai_matched
-        })
-      }
+      setJobs(result.jobs)
+      setJobStats({
+        total: result.total,
+        sources: result.sources,
+        aiMatched: result.aiMatched
+      })
     } catch (err) {
-      console.error('Error searching jobs:', err)
+      console.error('❌ Error searching jobs:', err)
       setError('Search failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Recently'
-    
-    try {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffTime = Math.abs(now - date)
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      
-      if (diffDays === 0) return 'Today'
-      if (diffDays === 1) return 'Yesterday'
-      if (diffDays < 7) return `${diffDays} days ago`
-      if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-      return `${Math.floor(diffDays / 30)} months ago`
-    } catch {
-      return 'Recently'
-    }
-  }
-
+  /**
+   * Handle Enter key press in search input
+   */
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
-      searchJobs()
+      handleSearchJobs()
     }
   }
 
@@ -173,16 +119,16 @@ const Jobs = () => {
         transition={{ duration: 0.5 }}
       >
         <div className="header-content">
-          <h1>OPPORTUNITIES (Career Hub)</h1>
-          <p>Real-world jobs from LinkedIn, Indeed, Glassdoor matched to your skills</p>
+          <h1>Career Opportunities</h1>
+          <p>Discover real-time job opportunities powered by AI and multiple job platforms</p>
           {jobStats.aiMatched && (
             <div className="ai-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '13px', color: '#8b5cf6' }}>
               <Sparkles size={16} />
-              <span>AI-Powered Matching</span>
+              <span>Browser-Based AI Search</span>
             </div>
           )}
         </div>
-        <button className="theme-toggle-btn" onClick={fetchUserJobs} title="Refresh Jobs">
+        <button className="theme-toggle-btn" onClick={handleFetchUserJobs} title="Refresh Jobs">
           <TrendingUp size={20} />
         </button>
       </motion.div>
@@ -208,7 +154,7 @@ const Jobs = () => {
             />
           </div>
           <button 
-            onClick={searchJobs} 
+            onClick={handleSearchJobs} 
             disabled={loading}
             style={{
               padding: '12px 24px',
@@ -246,7 +192,7 @@ const Jobs = () => {
         }}>
           ⚠️ {error}
           <div style={{ marginTop: '8px', fontSize: '13px' }}>
-            Make sure to run: <code style={{ background: '#fdd', padding: '2px 6px', borderRadius: '4px' }}>start_job_agent.bat</code>
+            Check browser console for API errors (Serper or Groq API)
           </div>
         </div>
       )}
@@ -363,7 +309,7 @@ const Jobs = () => {
           <Target size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
           <p>No jobs found. Try a different search term or check back later.</p>
           <button 
-            onClick={fetchUserJobs}
+            onClick={handleFetchUserJobs}
             style={{
               marginTop: '20px',
               padding: '10px 20px',

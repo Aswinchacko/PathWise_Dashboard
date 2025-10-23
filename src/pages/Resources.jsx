@@ -52,6 +52,10 @@ const Resources = () => {
   const [includeScrapedResources, setIncludeScrapedResources] = useState(true)
   const [scrapingSources, setScrapingSources] = useState([])
   const [activeTab, setActiveTab] = useState('browse') // 'browse' or 'scrape'
+  const [aiSearchStatus, setAiSearchStatus] = useState(null)
+  const [aiResources, setAiResources] = useState([])
+  const [showAiResources, setShowAiResources] = useState(false)
+  const [userRoadmap, setUserRoadmap] = useState(null)
 
   const resourceTypes = ['All', 'Tutorial', 'Course', 'Documentation', 'Interactive', 'Book', 'Guide', 'Project', 'Video', 'Article']
   const difficulties = ['All', 'Beginner', 'Intermediate', 'Advanced']
@@ -76,11 +80,12 @@ const Resources = () => {
 
   useEffect(() => {
     loadInitialData()
+    loadUserRoadmap()
   }, [])
 
   useEffect(() => {
     filterResources()
-  }, [resources, searchQuery, selectedType, selectedDifficulty, selectedDomain, includeScrapedResources])
+  }, [resources, searchQuery, selectedType, selectedDifficulty, selectedDomain, includeScrapedResources, showAiResources, aiResources])
 
   const loadInitialData = async () => {
     try {
@@ -115,6 +120,17 @@ const Resources = () => {
       setScrapingSources([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadUserRoadmap = async () => {
+    try {
+      // Get user ID from localStorage or auth context
+      const userId = localStorage.getItem('userId') || 'demo-user'
+      const roadmap = await resourcesService.getUserLatestRoadmap(userId)
+      setUserRoadmap(roadmap)
+    } catch (error) {
+      console.error('Error loading user roadmap:', error)
     }
   }
 
@@ -246,43 +262,88 @@ const Resources = () => {
     }
   }
 
+  // AI-powered resource search based on user's roadmap
+  const handleAISearch = async () => {
+    if (!userRoadmap) {
+      setAiSearchStatus({ 
+        type: 'error', 
+        message: 'No roadmap found. Please create a roadmap first.' 
+      })
+      return
+    }
+
+    setAiSearchStatus({ type: 'loading', message: 'Searching for resources based on your roadmap...' })
+    
+    try {
+      const userId = localStorage.getItem('userId') || 'demo-user'
+      const result = await resourcesService.searchResourcesWithAI(userId, 20)
+      
+      if (result.success) {
+        setAiResources(result.data.resources)
+        setShowAiResources(true)
+        setAiSearchStatus({ 
+          type: 'success', 
+          message: `Found ${result.data.totalFound} resources for your ${result.data.roadmap.domain} roadmap!` 
+        })
+      } else {
+        setAiSearchStatus({ 
+          type: 'error', 
+          message: result.error || 'AI search failed' 
+        })
+      }
+    } catch (error) {
+      setAiSearchStatus({ 
+        type: 'error', 
+        message: 'Network error during AI search' 
+      })
+    }
+    
+    // Clear status after 5 seconds
+    setTimeout(() => setAiSearchStatus(null), 5000)
+  }
+
   const filterResources = async () => {
     let filtered = [...resources]
 
-    // Apply search filter
-    if (searchQuery && includeScrapedResources) {
-      try {
-        // Search both local and scraped resources
-        const [localResults, scrapedResults] = await Promise.all([
-          Promise.resolve(resourcesService.searchResources(searchQuery, selectedDomain)),
-          resourcesService.searchScrapedResources(searchQuery, { 
-            domain: selectedDomain,
-            limit: 100 
-          })
-        ])
-        
-        // Combine results
-        const combined = [...localResults]
-        const seenUrls = new Set(localResults.map(r => r.url))
-        
-        scrapedResults.forEach(resource => {
-          if (!seenUrls.has(resource.url)) {
-            combined.push({
-              ...resource,
-              id: resource.id || resource._id,
-              color: resource.color || resourcesService.getColorForType(resource.type)
+    // If showing AI resources, use them instead
+    if (showAiResources && aiResources.length > 0) {
+      filtered = [...aiResources]
+    } else {
+      // Apply search filter
+      if (searchQuery && includeScrapedResources) {
+        try {
+          // Search both local and scraped resources
+          const [localResults, scrapedResults] = await Promise.all([
+            Promise.resolve(resourcesService.searchResources(searchQuery, selectedDomain)),
+            resourcesService.searchScrapedResources(searchQuery, { 
+              domain: selectedDomain,
+              limit: 100 
             })
-          }
-        })
-        
-        filtered = combined
-      } catch (error) {
-        console.error('Search error:', error)
-        // Fallback to local search
+          ])
+          
+          // Combine results
+          const combined = [...localResults]
+          const seenUrls = new Set(localResults.map(r => r.url))
+          
+          scrapedResults.forEach(resource => {
+            if (!seenUrls.has(resource.url)) {
+              combined.push({
+                ...resource,
+                id: resource.id || resource._id,
+                color: resource.color || resourcesService.getColorForType(resource.type)
+              })
+            }
+          })
+          
+          filtered = combined
+        } catch (error) {
+          console.error('Search error:', error)
+          // Fallback to local search
+          filtered = resourcesService.searchResources(searchQuery, selectedDomain)
+        }
+      } else if (searchQuery) {
         filtered = resourcesService.searchResources(searchQuery, selectedDomain)
       }
-    } else if (searchQuery) {
-      filtered = resourcesService.searchResources(searchQuery, selectedDomain)
     }
 
     // Apply type filter
@@ -354,6 +415,21 @@ const Resources = () => {
             )}
           </div>
           <div className="header-actions">
+            {userRoadmap && (
+              <button 
+                className="ai-search-btn"
+                onClick={handleAISearch}
+                disabled={aiSearchStatus?.type === 'loading'}
+                title="Find resources based on your roadmap using AI"
+              >
+                {aiSearchStatus?.type === 'loading' ? (
+                  <Loader size={18} className="spinning" />
+                ) : (
+                  <Brain size={18} />
+                )}
+                AI Search
+              </button>
+            )}
             <button 
               className={`toggle-btn ${includeScrapedResources ? 'active' : ''}`}
               onClick={toggleScrapedResources}
@@ -423,6 +499,21 @@ const Resources = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* AI Search Status */}
+      {aiSearchStatus && (
+        <motion.div 
+          className={`ai-search-status ${aiSearchStatus.type}`}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.9 }}
+        >
+          {aiSearchStatus.type === 'loading' && <Loader size={18} className="spinning" />}
+          {aiSearchStatus.type === 'success' && <CheckCircle size={18} />}
+          {aiSearchStatus.type === 'error' && <AlertCircle size={18} />}
+          <span>{aiSearchStatus.message}</span>
+        </motion.div>
+      )}
 
       {/* Tabs Navigation */}
       <motion.div 
@@ -611,9 +702,36 @@ const Resources = () => {
       >
         <div className="section-header">
           <h3>
-            {selectedDomain ? `${selectedDomain} Resources` : 'All Resources'}
-            <span className="count">({filteredResources.length})</span>
+            {showAiResources ? (
+              <>
+                AI-Powered Resources for Your Roadmap
+                <span className="count">({filteredResources.length})</span>
+                <button 
+                  className="clear-ai-btn"
+                  onClick={() => {
+                    setShowAiResources(false)
+                    setAiResources([])
+                  }}
+                  title="Clear AI search results"
+                >
+                  ×
+                </button>
+              </>
+            ) : (
+              <>
+                {selectedDomain ? `${selectedDomain} Resources` : 'All Resources'}
+                <span className="count">({filteredResources.length})</span>
+              </>
+            )}
           </h3>
+          {showAiResources && userRoadmap && (
+            <div className="ai-context">
+              <p>
+                <strong>Goal:</strong> {userRoadmap.goal} | 
+                <strong> Domain:</strong> {userRoadmap.domain}
+              </p>
+            </div>
+          )}
         </div>
 
         {filteredResources.length === 0 ? (

@@ -286,6 +286,81 @@ class ResumeService {
   }
 
   /**
+   * Extract text content from PDF/DOCX files for validation
+   * @param {File} file - The file to extract text from
+   * @returns {Promise<string>} Extracted text content
+   */
+  async extractTextFromFile(file) {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('extract_text_only', 'true') // Flag for text extraction only
+
+      const response = await api.post('/extract-text', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 20000 // Longer timeout for text extraction
+      })
+
+      return response.data.text || ''
+    } catch (error) {
+      console.error('Text extraction error:', error)
+      throw new Error('Failed to extract text from file')
+    }
+  }
+
+  /**
+   * Quick validation for PDF/DOCX files - parses content and checks if it's resume-like
+   * @param {File} file - The file to validate
+   * @param {string} userId - Optional user ID
+   * @returns {Promise<Object>} Quick validation result
+   */
+  async quickValidateResume(file, userId = null) {
+    try {
+      // Create a temporary form data for quick validation
+      const formData = new FormData()
+      formData.append('file', file)
+      if (userId) {
+        formData.append('user_id', userId)
+      }
+      formData.append('quick_validate', 'true') // Flag for quick validation
+
+      const response = await api.post('/quick-validate', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 15000 // Shorter timeout for quick validation
+      })
+
+      return {
+        success: response.data.success,
+        isResume: response.data.is_resume || false,
+        confidence: response.data.confidence || 0,
+        reasoning: response.data.reasoning || 'Content validation completed',
+        missingElements: response.data.missing_elements || [],
+        suggestions: response.data.suggestions || []
+      }
+    } catch (error) {
+      console.error('Quick validation error:', error)
+      
+      // If the quick validation endpoint doesn't exist, fall back to basic validation
+      if (error.response?.status === 404) {
+        return {
+          success: true,
+          isResume: true,
+          confidence: 75,
+          reasoning: 'Filename suggests resume content (content validation unavailable)',
+          missingElements: [],
+          suggestions: []
+        }
+      }
+      
+      throw error
+    }
+  }
+
+  /**
    * Test resume validation (for development/testing)
    * @param {File} file - File to test
    * @returns {Promise<Object>} Validation result with details

@@ -212,85 +212,53 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="dashboard-content">
-        {/* Stats Overview */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon users">
-              <Users size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">
-                {loading ? (
-                  <div className="loading-skeleton" style={{ width: '80px', height: '32px' }}></div>
-                ) : (
-                  stats.totalUsers.toLocaleString()
-                )}
-              </h3>
-              <p className="stat-label">Total Users</p>
-              <div className="stat-change positive">
-                <TrendingUp size={16} />
-                <span>{stats.activeUsers || 0} Active</span>
-              </div>
+        {/* Platform Steps */}
+        <div className="steps-grid">
+          <div className="step-card">
+            <div className="step-number">1</div>
+            <div className="step-content">
+              <h3 className="step-title">Upload Your Resume</h3>
+              <p className="step-description">Parse your resume to extract skills, experience, and career background for personalized recommendations</p>
+              <a href="/resume-parser" className="step-action">
+                <Upload size={16} />
+                Start Parsing
+              </a>
             </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-icon discussions">
-              <MessageSquare size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">
-                {loading ? (
-                  <div className="loading-skeleton" style={{ width: '80px', height: '32px' }}></div>
-                ) : (
-                  (stats.totalDiscussions || 0).toLocaleString()
-                )}
-              </h3>
-              <p className="stat-label">Total Discussions</p>
-              <div className="stat-change positive">
-                <TrendingUp size={16} />
-                <span>{stats.activeDiscussionsThisWeek || 0} This Week</span>
-              </div>
+          <div className="step-card">
+            <div className="step-number">2</div>
+            <div className="step-content">
+              <h3 className="step-title">Generate Career Roadmap</h3>
+              <p className="step-description">Create a personalized career path based on your skills, interests, and goals</p>
+              <a href="/roadmap" className="step-action">
+                <Target size={16} />
+                Create Roadmap
+              </a>
             </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-icon roadmaps">
-              <Map size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">
-                {loading ? (
-                  <div className="loading-skeleton" style={{ width: '80px', height: '32px' }}></div>
-                ) : (
-                  stats.roadmapsGenerated.toLocaleString()
-                )}
-              </h3>
-              <p className="stat-label">Roadmaps Generated</p>
-              <div className="stat-change positive">
-                <TrendingUp size={16} />
-                <span>Career paths created</span>
-              </div>
+          <div className="step-card">
+            <div className="step-number">3</div>
+            <div className="step-content">
+              <h3 className="step-title">Get AI Career Guidance</h3>
+              <p className="step-description">Chat with our AI mentor for personalized advice, skill recommendations, and career insights</p>
+              <a href="/chatbot" className="step-action">
+                <Bot size={16} />
+                Start Chatting
+              </a>
             </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-icon chats">
-              <MessageCircle size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">
-                {loading ? (
-                  <div className="loading-skeleton" style={{ width: '80px', height: '32px' }}></div>
-                ) : (
-                  stats.chatSessions.toLocaleString()
-                )}
-              </h3>
-              <p className="stat-label">Chat Sessions</p>
-              <div className="stat-change positive">
-                <TrendingUp size={16} />
-                <span>AI conversations</span>
-              </div>
+          <div className="step-card">
+            <div className="step-number">4</div>
+            <div className="step-content">
+              <h3 className="step-title">Find Real Jobs</h3>
+              <p className="step-description">Discover job opportunities that match your roadmap aim and career progression goals</p>
+              <a href="/jobs" className="step-action">
+                <Search size={16} />
+                Browse Jobs
+              </a>
             </div>
           </div>
         </div>

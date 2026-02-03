@@ -1,13 +1,139 @@
-import { motion } from 'framer-motion'
-import { Search, Filter, Heart, Lightbulb, Star, Target, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, Filter, Heart, Lightbulb, Star, Target, Loader2, X, CheckCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import './Projects.css'
 
 const Projects = () => {
   const [userAim, setUserAim] = useState('')
-  const [recommendations, setRecommendations] = useState([])
-  const [allProjects, setAllProjects] = useState([])
-  const [phaseProjects, setPhaseProjects] = useState([])
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [projectStages, setProjectStages] = useState([])
+  const [loadingStages, setLoadingStages] = useState(false)
+
+  const DEFAULT_PROJECTS = [
+    {
+      id: 1,
+      title: "Building a Simple Weather API",
+      description: "Create a RESTful API that fetches and returns weather data for a given location. This project will reinforce understanding of API design principles, endpoint creation, and data serialization.",
+      difficulty: "Intermediate",
+      rating: 4.5,
+      duration: "1-2 weeks",
+      skills: ["RESTful API", "JSON serialization"],
+      category: "web-dev"
+    },
+    {
+      id: 2,
+      title: "Implementing User Authentication with JWT",
+      description: "Build a secure API that handles user authentication using JSON Web Tokens (JWT). This project will help solidify understanding of authentication mechanisms, token validation, and secure data transmission.",
+      difficulty: "Advanced",
+      rating: 4.5,
+      duration: "2-4 weeks",
+      skills: ["JWT", "Authentication", "Authorization"],
+      category: "web-dev"
+    },
+    {
+      id: 3,
+      title: "Building a CRUD API with Real-time Updates",
+      description: "Create a full-featured CRUD API that handles real-time updates using WebSockets. This project will reinforce understanding of real-time communication, API performance optimization, and data consistency.",
+      difficulty: "Advanced",
+      rating: 4.5,
+      duration: "1-2 months",
+      skills: ["WebSockets", "Real-time updates", "API performance optimization"],
+      category: "web-dev"
+    },
+    {
+      id: 4,
+      title: "Building a Simple RESTful API for a Blog",
+      description: "Create a RESTful API using Node.js and Express.js to manage a blog's posts. This project will help solidify understanding of API design, routing, and request handling. You'll learn to create API endpoints for CRUD operations, handle validation and errors, and implement authentication.",
+      difficulty: "Intermediate",
+      rating: 4.5,
+      duration: "2-4 weeks",
+      skills: ["Node.js", "Express.js", "API Design"],
+      category: "web-dev"
+    },
+    {
+      id: 5,
+      title: "Implementing API Security Measures",
+      description: "Build upon the previous project by adding security measures to prevent common web attacks. You'll learn to implement rate limiting, input validation, and authentication using JSON Web Tokens (JWT). This project will help you understand the importance of API security and how to protect against common threats.",
+      difficulty: "Advanced",
+      rating: 4.5,
+      duration: "1-2 weeks",
+      skills: ["API Security", "Rate Limiting", "Input Validation"],
+      category: "web-dev"
+    },
+    {
+      id: 6,
+      title: "Creating a Real-time API using WebSockets",
+      description: "Build a real-time API using Node.js, Express.js, and WebSockets to push updates to connected clients. This project will help you understand the concept of real-time APIs and how to implement WebSockets for live updates. You'll learn to handle WebSocket connections, messages, and errors.",
+      difficulty: "Advanced",
+      rating: 4.5,
+      duration: "2-4 weeks",
+      skills: ["Node.js", "Express.js", "WebSockets"],
+      category: "web-dev"
+    },
+    {
+      id: 7,
+      title: "To-Do List App",
+      description: "Build a simple command-line based To-Do List App using Python. This project will help you practice data structures, functions, and modules. You will learn how to store and retrieve data from a list, create functions for adding, removing, and marking tasks as completed.",
+      difficulty: "Beginner",
+      rating: 4.5,
+      duration: "1-2 weeks",
+      skills: ["functions", "data structures", "modules"],
+      category: "python"
+    },
+    {
+      id: 8,
+      title: "Hangman Game",
+      description: "Create a Hangman game using Python. This project will help you practice conditional statements, loops, and file input/output. You will learn how to generate random words, handle user input, and keep track of the game state.",
+      difficulty: "Intermediate",
+      rating: 4.5,
+      duration: "2-4 weeks",
+      skills: ["conditional statements", "loops", "file input/output"],
+      category: "python"
+    },
+    {
+      id: 9,
+      title: "Quiz Program",
+      description: "Build a Quiz program using Python. This project will help you practice object-oriented programming, file input/output, and error handling. You will learn how to create classes for questions and answers, read from a file, and display scores.",
+      difficulty: "Advanced",
+      rating: 4.5,
+      duration: "1-2 months",
+      skills: ["object-oriented programming", "file input/output", "error handling"],
+      category: "python"
+    },
+    {
+      id: 10,
+      title: "Personal Finance Calculator",
+      description: "Build a command-line based personal finance calculator that takes user input for income, expenses, savings, and investments to provide a detailed analysis of their financial health. This project reinforces skills in variables, data types, loops, conditional statements, functions, and object-oriented programming.",
+      difficulty: "Beginner",
+      rating: 4.5,
+      duration: "1-2 weeks",
+      skills: ["variables", "data types", "loops"],
+      category: "python"
+    },
+    {
+      id: 11,
+      title: "Rock, Paper, Scissors Game",
+      description: "Develop a simple game of Rock, Paper, Scissors using Python, where the user can play against the computer. This project applies skills in functions, loops, conditional statements, and random number generation.",
+      difficulty: "Intermediate",
+      rating: 4.5,
+      duration: "1-2 weeks",
+      skills: ["functions", "loops", "conditional statements"],
+      category: "python"
+    },
+    {
+      id: 12,
+      title: "Advanced To-Do List App",
+      description: "Create a simple command-line based to-do list app that allows users to add, remove, and mark tasks as completed. This project reinforces skills in lists, dictionaries, file input/output, and exception handling.",
+      difficulty: "Advanced",
+      rating: 4.5,
+      duration: "2-4 weeks",
+      skills: ["lists", "dictionaries", "file input/output"],
+      category: "python"
+    }
+  ]
+
+  const [recommendations, setRecommendations] = useState(DEFAULT_PROJECTS)
+  const [allProjects, setAllProjects] = useState(DEFAULT_PROJECTS)
   const [loading, setLoading] = useState(false)
   const [recommendationMethod, setRecommendationMethod] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
@@ -15,7 +141,6 @@ const Projects = () => {
   const projectCategories = [
     { id: 'all', label: 'All' },
     { id: 'saved', label: 'Saved' },
-    { id: 'phase-based', label: 'Phase-Based' },
     { id: 'beginner', label: 'Beginner' },
     { id: 'intermediate', label: 'Intermediate' },
     { id: 'advanced', label: 'Advanced' },
@@ -24,33 +149,6 @@ const Projects = () => {
     { id: 'data-science', label: 'Data Science' },
     { id: 'mobile-dev', label: 'Mobile Dev' },
   ]
-
-  // Fetch all projects on mount
-  useEffect(() => {
-    fetchAllProjects()
-  }, [])
-
-  const fetchAllProjects = async () => {
-    try {
-      const response = await fetch('http://localhost:5003/api/projects')
-      const data = await response.json()
-      if (data.success) {
-        // Separate phase-based projects from regular projects
-        const phaseBasedProjects = data.projects.filter(p => p.phase)
-        const regularProjects = data.projects.filter(p => !p.phase)
-        
-        setAllProjects(regularProjects)
-        setPhaseProjects(phaseBasedProjects)
-        setRecommendations(regularProjects.slice(0, 6)) // Show first 6 initially
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error)
-      // No fallback - show empty state with message to get recommendations
-      setAllProjects([])
-      setPhaseProjects([])
-      setRecommendations([])
-    }
-  }
 
   const getRecommendations = async () => {
     if (!userAim.trim()) return
@@ -62,7 +160,7 @@ const Projects = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aim: userAim, limit: 6 })
       })
-      
+
       const data = await response.json()
       if (data.success) {
         setRecommendations(data.recommendations)
@@ -84,40 +182,55 @@ const Projects = () => {
   const filterProjects = (category) => {
     setActiveCategory(category)
     setRecommendationMethod('') // Clear recommendation badge
-    
+
     if (category === 'all') {
-      // Show both regular and phase-based projects
-      const combinedProjects = [...allProjects, ...phaseProjects]
-      setRecommendations(combinedProjects.slice(0, 6))
-    } else if (category === 'phase-based') {
-      // Show only phase-based projects
-      setRecommendations(phaseProjects)
+      setRecommendations(allProjects)
     } else if (category === 'saved') {
-      // Filter saved projects (you can implement this logic)
-      const combinedProjects = [...allProjects, ...phaseProjects]
-      setRecommendations(combinedProjects.filter(p => p.saved).slice(0, 6))
+      setRecommendations(allProjects.filter(p => p.saved).slice(0, 6))
     } else if (['beginner', 'intermediate', 'advanced'].includes(category)) {
-      // Filter by difficulty
-      const combinedProjects = [...allProjects, ...phaseProjects]
-      const filtered = combinedProjects.filter(p => 
+      const filtered = allProjects.filter(p =>
         p.difficulty.toLowerCase() === category
       )
       setRecommendations(filtered)
     } else {
-      // Filter by category
-      const combinedProjects = [...allProjects, ...phaseProjects]
-      const filtered = combinedProjects.filter(p => 
+      const filtered = allProjects.filter(p =>
         p.category === category
       )
       setRecommendations(filtered)
     }
   }
 
-  // No default projects - everything comes from AI or API
+  const fetchProjectStages = async (project) => {
+    setLoadingStages(true)
+    setProjectStages([])
+    try {
+      const response = await fetch('http://localhost:5003/api/project-stages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: project.title,
+          description: project.description
+        })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setProjectStages(data.stages)
+      }
+    } catch (error) {
+      console.error('Error fetching stages:', error)
+    } finally {
+      setLoadingStages(false)
+    }
+  }
+
+  const handleViewDetails = (project) => {
+    setSelectedProject(project)
+    fetchProjectStages(project)
+  }
 
   return (
     <div className="projects-page">
-      <motion.div 
+      <motion.div
         className="projects-header"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -135,7 +248,7 @@ const Projects = () => {
       </motion.div>
 
       {/* AI Recommendation Input */}
-      <motion.div 
+      <motion.div
         className="aim-input-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -151,8 +264,8 @@ const Projects = () => {
             onChange={(e) => setUserAim(e.target.value)}
             onKeyPress={handleKeyPress}
           />
-          <button 
-            className="recommend-btn" 
+          <button
+            className="recommend-btn"
             onClick={getRecommendations}
             disabled={loading || !userAim.trim()}
           >
@@ -176,80 +289,7 @@ const Projects = () => {
         )}
       </motion.div>
 
-      {/* Phase-Based Projects Section */}
-      {phaseProjects.length > 0 && (
-        <motion.div 
-          className="phase-projects-section"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
-          <div className="phase-projects-header">
-            <h3>🎉 Phase-Based Projects</h3>
-            <p>Projects recommended based on completed learning phases</p>
-          </div>
-          <div className="phase-projects-grid">
-            {phaseProjects.slice(0, 3).map((project, index) => (
-              <motion.div
-                key={project.id}
-                className="phase-project-card"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 + index * 0.1 }}
-              >
-                <div className="phase-badge">
-                  <span className="phase-name">{project.phase}</span>
-                </div>
-                <div className="project-image">
-                  <div className="image-placeholder">
-                    <Target size={24} />
-                  </div>
-                </div>
-                <div className="project-content">
-                  <h4>{project.title}</h4>
-                  <p>{project.description}</p>
-                  {project.skills && (
-                    <div className="project-tags">
-                      {project.skills.slice(0, 3).map((skill, i) => (
-                        <span key={i} className="skill-tag">{skill}</span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="project-meta">
-                    <span className="difficulty">{project.difficulty}</span>
-                    <div className="rating">
-                      <Star size={16} />
-                      <span>{project.rating}</span>
-                    </div>
-                    {project.duration && (
-                      <span className="duration">{project.duration}</span>
-                    )}
-                  </div>
-                  <div className="project-actions">
-                    <button className="btn btn-primary">
-                      View Details
-                    </button>
-                    <button className="like-btn">
-                      <Heart size={16} />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          {phaseProjects.length > 3 && (
-            <div className="view-more-phase">
-              <button 
-                className="btn btn-secondary"
-                onClick={() => filterProjects('phase-based')}
-              >
-                View All Phase-Based Projects ({phaseProjects.length})
-              </button>
-            </div>
-          )}
-        </motion.div>
-      )}
-
+      {/* Categories Filter */}
       <div className="filter-section">
         <div className="filter-tabs">
           {projectCategories.map((category) => (
@@ -271,7 +311,7 @@ const Projects = () => {
             <p>AI is generating custom projects for you...</p>
           </div>
         ) : recommendations.length === 0 ? (
-          <motion.div 
+          <motion.div
             className="empty-state"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -281,31 +321,17 @@ const Projects = () => {
               <Target size={64} className="empty-icon" />
               <h3>No Projects Yet</h3>
               <p>Enter your career goal above to get AI-generated project recommendations tailored just for you!</p>
-              <div className="example-aims">
-                <p>Try these examples:</p>
-                <div className="example-buttons">
-                  <button onClick={() => setUserAim('I want to become a full-stack developer')}>
-                    Full-Stack Developer
-                  </button>
-                  <button onClick={() => setUserAim('I want to learn machine learning')}>
-                    Machine Learning
-                  </button>
-                  <button onClick={() => setUserAim('I want to build mobile apps')}>
-                    Mobile Development
-                  </button>
-                </div>
-              </div>
             </div>
           </motion.div>
         ) : (
           <>
-            <motion.div 
+            <motion.div
               className="recommendation-group unlocked"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <h3>{userAim ? 'AI-Generated Projects for Your Goal' : 'Recommended Projects'}</h3>
+              <h3>Top Recommended Projects</h3>
               <div className="project-grid">
                 {recommendations.slice(0, 3).map((project, index) => (
                   <motion.div
@@ -341,7 +367,10 @@ const Projects = () => {
                         )}
                       </div>
                       <div className="project-actions">
-                        <button className="btn btn-primary">
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleViewDetails(project)}
+                        >
                           View Details
                         </button>
                         <button className="like-btn">
@@ -355,7 +384,7 @@ const Projects = () => {
             </motion.div>
 
             {recommendations.length > 3 && (
-              <motion.div 
+              <motion.div
                 className="recommendation-group"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -397,7 +426,12 @@ const Projects = () => {
                           )}
                         </div>
                         <div className="project-actions">
-                          <button className="btn btn-primary">View Details</button>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => handleViewDetails(project)}
+                          >
+                            View Details
+                          </button>
                           <button className="like-btn">
                             <Heart size={16} />
                           </button>
@@ -411,6 +445,109 @@ const Projects = () => {
           </>
         )}
       </div>
+
+      <AnimatePresence>
+        {selectedProject && (
+          <div className="modal-overlay" onClick={() => setSelectedProject(null)}>
+            <motion.div
+              className="modal-content project-modal"
+              initial={{ opacity: 0, y: 100, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 100, scale: 0.9 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{selectedProject.title}</h2>
+                <button className="close-btn" onClick={() => setSelectedProject(null)}>
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div className="project-overview">
+                  <p className="description">{selectedProject.description}</p>
+
+                  <div className="project-stats">
+                    <div className="stat-item">
+                      <span className="label">Difficulty</span>
+                      <span className="value">{selectedProject.difficulty}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="label">Duration</span>
+                      <span className="value">{selectedProject.duration}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="label">Category</span>
+                      <span className="value">{selectedProject.category}</span>
+                    </div>
+                  </div>
+
+                  <div className="skills-section">
+                    <h4>Skills You'll Learn</h4>
+                    <div className="skills-list">
+                      {selectedProject.skills?.map((skill, i) => (
+                        <span key={i} className="skill-tag">{skill}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="project-roadmap">
+                  <h3>Implementation Roadmap</h3>
+                  {loadingStages ? (
+                    <div className="fetching-stages">
+                      <Loader2 className="spinner" size={24} />
+                      <p>AI is generating step-by-step implementation plan...</p>
+                    </div>
+                  ) : projectStages.length > 0 ? (
+                    <div className="stages-timeline">
+                      {projectStages.map((stage, index) => (
+                        <div key={index} className="stage-item">
+                          <div className="stage-number">{index + 1}</div>
+                          <div className="stage-content">
+                            <div className="stage-header">
+                              <h4>{stage.title}</h4>
+                              <span className="stage-duration">{stage.duration}</span>
+                            </div>
+                            <p>{stage.description}</p>
+                            <ul className="stage-tasks">
+                              {stage.items?.map((item, i) => (
+                                <li key={i}>
+                                  <CheckCircle size={14} className="task-icon" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="no-stages">
+                      <p>Could not generate roadmap.</p>
+                      <button
+                        className="retry-btn"
+                        onClick={() => fetchProjectStages(selectedProject)}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setSelectedProject(null)}>
+                  Close
+                </button>
+                <button className="btn btn-primary start-project-btn">
+                  Start Project
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

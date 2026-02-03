@@ -1,9 +1,53 @@
 import { motion } from 'framer-motion'
 import { Check, X, Briefcase, Users, MessageCircle, FolderOpen, Zap, Sparkles } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import PaymentModal from '../components/PaymentModal'
 import './Subscription.css'
 
 const Subscription = () => {
-  const subscriptionPlans = [
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState(null)
+  const [userSubscription, setUserSubscription] = useState(null)
+  const [userId, setUserId] = useState(null)
+
+  // Get user ID from localStorage or context
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    setUserId(user._id || user.id)
+    fetchUserSubscription(user._id || user.id)
+  }, [])
+
+  const fetchUserSubscription = async (userId) => {
+    if (!userId) return
+    
+    try {
+      const response = await fetch(`http://localhost:8006/api/subscription/user/${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setUserSubscription(data.subscription)
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error)
+    }
+  }
+
+  const handleUpgrade = (plan) => {
+    if (plan.id === 'free') return
+    setSelectedPlan(plan)
+    setShowPaymentModal(true)
+  }
+
+  const handlePaymentSuccess = (result) => {
+    console.log('Payment successful:', result)
+    // Refresh subscription data
+    if (userId) {
+      fetchUserSubscription(userId)
+    }
+    // Show success message or redirect
+    alert('Payment successful! Your subscription has been activated.')
+  }
+
+  const allSubscriptionPlans = [
     {
       id: 'free',
       name: 'Free',
@@ -39,6 +83,11 @@ const Subscription = () => {
     },
   ]
 
+  // Filter plans based on user subscription status
+  const subscriptionPlans = userSubscription?.plan === 'premium' 
+    ? allSubscriptionPlans.filter(plan => plan.id === 'premium')
+    : allSubscriptionPlans
+
   const featureCategories = [
     { id: 'roadmaps', label: 'Learning Roadmaps', icon: Zap },
     { id: 'projects', label: 'Projects', icon: FolderOpen },
@@ -58,10 +107,10 @@ const Subscription = () => {
       >
         <div className="hero-badge">
           <Sparkles size={16} />
-          <span>Choose Your Path</span>
+          <span>{userSubscription?.plan === 'premium' ? 'Premium Member' : 'Choose Your Path'}</span>
         </div>
-        <h1>Unlock Your Career Potential</h1>
-        <p>Start free, upgrade when you're ready to accelerate your growth</p>
+        <h1>{userSubscription?.plan === 'premium' ? 'Welcome to Premium!' : 'Unlock Your Career Potential'}</h1>
+        <p>{userSubscription?.plan === 'premium' ? 'You have full access to all premium features' : 'Start free, upgrade when you\'re ready to accelerate your growth'}</p>
         <div className="hero-stats">
           <div className="stat">
             <span className="stat-number">10K+</span>
@@ -127,8 +176,12 @@ const Subscription = () => {
                 </div>
 
                 <div className="button-container">
-                  <button className={`cta-button ${plan.popular ? 'popular' : ''}`}>
-                    {plan.cta}
+                  <button 
+                    className={`cta-button ${plan.popular ? 'popular' : ''} ${userSubscription?.plan === plan.id ? 'current-plan' : ''}`}
+                    onClick={() => handleUpgrade(plan)}
+                    disabled={userSubscription?.plan === plan.id}
+                  >
+                    {userSubscription?.plan === plan.id ? 'Current Plan' : plan.cta}
                     {plan.popular && <Sparkles size={16} />}
                   </button>
                 </div>
@@ -168,53 +221,55 @@ const Subscription = () => {
         })}
       </div>
 
-      {/* Feature Comparison Table */}
-      <motion.div 
-        className="comparison-section"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-      >
-        <h2>Compare plans</h2>
-        <div className="comparison-table">
-          <div className="table-header">
-            <div className="feature-col">Features</div>
-            {subscriptionPlans.map(plan => (
-              <div key={plan.id} className="plan-col">
-                {plan.name}
-              </div>
-            ))}
-          </div>
-          {featureCategories.map((category) => {
-            const Icon = category.icon
-            return (
-              <div key={category.id} className="table-row">
-                <div className="feature-col">
-                  <Icon size={18} />
-                  <span>{category.label}</span>
+      {/* Feature Comparison Table - Only show for free users */}
+      {userSubscription?.plan !== 'premium' && (
+        <motion.div 
+          className="comparison-section"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <h2>Compare plans</h2>
+          <div className="comparison-table">
+            <div className="table-header">
+              <div className="feature-col">Features</div>
+              {subscriptionPlans.map(plan => (
+                <div key={plan.id} className="plan-col">
+                  {plan.name}
                 </div>
-                {subscriptionPlans.map(plan => {
-                  const feature = plan.features[category.id]
-                  return (
-                    <div key={plan.id} className="plan-col">
-                      {feature.included ? (
-                        <div className="check-cell">
-                          <Check size={20} />
-                        </div>
-                      ) : (
-                        <div className="cross-cell">
-                          <X size={20} />
-                        </div>
-                      )}
-                      <div className="mobile-label">{feature.value}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
-        </div>
-      </motion.div>
+              ))}
+            </div>
+            {featureCategories.map((category) => {
+              const Icon = category.icon
+              return (
+                <div key={category.id} className="table-row">
+                  <div className="feature-col">
+                    <Icon size={18} />
+                    <span>{category.label}</span>
+                  </div>
+                  {subscriptionPlans.map(plan => {
+                    const feature = plan.features[category.id]
+                    return (
+                      <div key={plan.id} className="plan-col">
+                        {feature.included ? (
+                          <div className="check-cell">
+                            <Check size={20} />
+                          </div>
+                        ) : (
+                          <div className="cross-cell">
+                            <X size={20} />
+                          </div>
+                        )}
+                        <div className="mobile-label">{feature.value}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        </motion.div>
+      )}
 
       {/* FAQ Section */}
       <motion.div 
@@ -243,6 +298,17 @@ const Subscription = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedPlan && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          plan={selectedPlan}
+          userId={userId}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   )
 }

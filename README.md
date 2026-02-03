@@ -26,17 +26,7 @@ React frontend for the PathWise career development platform with modern UI and i
    npm install
    ```
 
-2. **Setup environment variables**
-   ```bash
-   # Windows
-   setup_env.bat
-   
-   # Or manually copy and edit
-   copy env.example .env
-   # Edit .env with your API keys
-   ```
-
-3. **Start the development server**
+2. **Start the development server**
    ```bash
    npm run dev
    ```

@@ -323,6 +323,10 @@
 }
 
 /* Skills Management */
+.skills-input-container {
+  position: relative;
+}
+
 .skills-input {
   display: flex;
   gap: var(--spacing-sm);
@@ -347,6 +351,44 @@
 
 .add-btn:hover {
   background: var(--primary-700);
+}
+
+.skill-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+
+.skill-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.skill-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.skill-suggestion-item:hover {
+  background-color: #f8fafc;
+}
+
+.skill-suggestion-item span {
+  font-size: 0.875rem;
+  color: #374151;
 }
 
 .skills-list {
@@ -1755,6 +1797,10 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
+.skills-input-container {
+  position: relative;
+}
+
 .skills-input {
   display: flex;
   gap: 0.5rem;
@@ -2100,4 +2146,61 @@ button:disabled {
   gap: 0.5rem;
   color: #6b7280;
   font-size: 0.9rem;
-} 
+}
+
+.subscription-canceled-info {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+}
+
+.canceled-note {
+  font-size: 0.8rem;
+  color: #92400e;
+  font-style: italic;
+}
+
+/* Resume Auto-Update Info */
+.resume-auto-update-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1px solid #0ea5e9;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.auto-update-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0369a1;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.auto-update-indicator svg {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.resume-count {
+  color: #0369a1;
+  font-size: 0.8rem;
+  background: rgba(14, 165, 233, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 500;
+}

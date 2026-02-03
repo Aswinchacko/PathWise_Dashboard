@@ -1,13 +1,13 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { 
-  Menu, 
-  Home, 
-  GraduationCap, 
-  FileText, 
-  Users, 
-  MessageCircle, 
-  BarChart3, 
+import {
+  Menu,
+  Home,
+  GraduationCap,
+  FileText,
+  Users,
+  MessageCircle,
+  BarChart3,
   Settings,
   Target,
   Briefcase,
@@ -16,7 +16,8 @@ import {
   FolderOpen,
   Shield,
   Crown,
-  Zap
+  Zap,
+  Gamepad2
 } from 'lucide-react'
 import './Sidebar.css'
 import authService from '../../services/authService'
@@ -32,6 +33,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     { path: '/resume-parser', icon: Upload, label: 'Resume Parser' },
     { path: '/mentors', icon: Users, label: 'Mentors' },
     { path: '/jobs', icon: Briefcase, label: 'Jobs' },
+    { path: '/micro-learning', icon: Gamepad2, label: 'Micro-Learning', premium: true },
     { path: '/chatbot', icon: MessageCircle, label: 'Chatbot' },
     { path: '/resources', icon: FileText, label: 'Resources' },
     { path: '/community', icon: Globe, label: 'Community' },
@@ -41,14 +43,14 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   ]
 
   return (
-    <motion.aside 
+    <motion.aside
       className={`sidebar ${collapsed ? 'collapsed' : ''}`}
       initial={{ width: collapsed ? 80 : 240 }}
       animate={{ width: collapsed ? 80 : 240 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
     >
       <div className="sidebar-header">
-        <motion.button 
+        <motion.button
           className="menu-toggle"
           onClick={() => setCollapsed(!collapsed)}
           aria-label="Toggle sidebar"
@@ -59,7 +61,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
           <Menu size={20} />
         </motion.button>
         {!collapsed && (
-          <motion.h2 
+          <motion.h2
             className="logo"
             initial={{ opacity: 0, x: -5 }}
             animate={{ opacity: 1, x: 0 }}
@@ -74,7 +76,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         {navItems.map((item, index) => {
           const Icon = item.icon
           const isActive = location.pathname === item.path
-          
+
           return (
             <motion.div
               key={item.path}

@@ -1,9 +1,12 @@
 .chatbot-page {
-  height: 100vh;
+  height: calc(100vh - 4rem);
+  width: 100%;
   display: flex;
   background: linear-gradient(135deg, var(--neutral-50) 0%, var(--primary-50) 100%);
   overflow: hidden;
   position: relative;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
 }
 
 .chatbot-page::before {
@@ -13,7 +16,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
+  background:
     radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 40% 40%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
@@ -22,7 +25,7 @@
 }
 
 .chatbot-sidebar {
-  width: 300px;
+  width: 260px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-right: 1px solid var(--neutral-200);
@@ -190,7 +193,7 @@
 }
 
 .chat-title-section h1 {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--neutral-900);
   margin: 0;
@@ -236,15 +239,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-2xl);
-  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
   background: white;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
 }
 
 .chatbot-header h1 {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
   -webkit-background-clip: text;
@@ -776,6 +779,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -790,6 +794,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -808,7 +813,7 @@
 }
 
 .welcome-text h2 {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--neutral-900);
   margin-bottom: var(--spacing-md);
@@ -846,7 +851,7 @@
   background: white;
   border: 2px solid var(--prompt-color);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   cursor: pointer;
   transition: var(--transition-normal);
   text-align: left;
@@ -937,39 +942,39 @@
     z-index: 1000;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   }
-  
+
   .sidebar-toggle-mobile {
     display: block;
   }
-  
+
   .sidebar-toggle {
     display: none;
   }
-  
+
   .chatbot-container {
     padding: var(--spacing-md);
   }
-  
+
   .prompts-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .welcome-text h2 {
     font-size: 1.5rem;
   }
-  
+
   .chat-title-section h1 {
     font-size: 1.1rem;
   }
-  
+
   .chat-item {
     padding: var(--spacing-sm) var(--spacing-xs);
   }
-  
+
   .chat-title {
     font-size: 0.9rem;
   }
-  
+
   .chat-date {
     font-size: 0.75rem;
   }
@@ -1107,9 +1112,9 @@
   background: white;
   border-radius: var(--radius-xl);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  max-width: 800px;
+  max-width: 700px;
   width: 100%;
-  max-height: 90vh;
+  max-height: 85vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1133,7 +1138,7 @@
 
 .roadmap-modal-title h2 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 600;
 }
 
@@ -1284,26 +1289,26 @@
   .roadmap-modal-overlay {
     padding: var(--spacing-sm);
   }
-  
+
   .roadmap-modal {
     max-height: 95vh;
   }
-  
+
   .roadmap-modal-header {
     padding: var(--spacing-md);
   }
-  
+
   .roadmap-modal-content {
     padding: var(--spacing-md);
   }
-  
+
   .roadmap-modal-actions {
     padding: var(--spacing-md);
     flex-direction: column;
   }
-  
+
   .roadmap-modal-btn {
     width: 100%;
     justify-content: center;
   }
-} 
+}

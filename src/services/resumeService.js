@@ -306,6 +306,27 @@ class ResumeService {
       return response.data.text || ''
     } catch (error) {
       console.error('Text extraction error:', error)
+      
+      // Fallback: If new endpoint fails, try using parse endpoint
+      try {
+        console.log('Falling back to parse endpoint for text extraction...')
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await api.post('/parse', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          timeout: 20000
+        })
+
+        if (response.data.success && response.data.data) {
+          return response.data.data.raw_text || ''
+        }
+      } catch (fallbackError) {
+        console.error('Fallback text extraction also failed:', fallbackError)
+      }
+      
       throw new Error('Failed to extract text from file')
     }
   }
@@ -318,45 +339,86 @@ class ResumeService {
    */
   async quickValidateResume(file, userId = null) {
     try {
-      // Create a temporary form data for quick validation
+      // Use the existing parse endpoint to validate content
       const formData = new FormData()
       formData.append('file', file)
       if (userId) {
         formData.append('user_id', userId)
       }
-      formData.append('quick_validate', 'true') // Flag for quick validation
 
-      const response = await api.post('/quick-validate', formData, {
+      const response = await api.post('/parse', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
         timeout: 15000 // Shorter timeout for quick validation
       })
 
+      if (!response.data.success) {
+        return {
+          success: false,
+          isResume: false,
+          confidence: 0,
+          reasoning: 'Failed to parse file - may not contain resume content',
+          missingElements: [],
+          suggestions: ['Please ensure this is a valid resume document']
+        }
+      }
+
+      const parsedData = response.data.data
+      
+      // Check if parsed data looks like a resume
+      const hasName = parsedData.name && parsedData.name.trim().length > 0
+      const hasEmail = parsedData.email && parsedData.email.includes('@')
+      const hasExperience = parsedData.experience && parsedData.experience.length > 0
+      const hasEducation = parsedData.education && parsedData.education.length > 0
+      const hasSkills = parsedData.skills && parsedData.skills.length > 0
+      
+      let score = 0
+      let missingElements = []
+      
+      if (hasName) score += 20
+      else missingElements.push('Name')
+      
+      if (hasEmail) score += 20
+      else missingElements.push('Email')
+      
+      if (hasExperience) score += 25
+      else missingElements.push('Work Experience')
+      
+      if (hasEducation) score += 20
+      else missingElements.push('Education')
+      
+      if (hasSkills) score += 15
+      else missingElements.push('Skills')
+      
+      const isResume = score >= 60
+      const confidence = Math.min(score, 100)
+      
+      let reasoning = ''
+      if (isResume) {
+        reasoning = 'File contains professional resume information with good structure'
+      } else {
+        reasoning = `File appears to be missing key resume elements: ${missingElements.join(', ')}`
+      }
+      
       return {
-        success: response.data.success,
-        isResume: response.data.is_resume || false,
-        confidence: response.data.confidence || 0,
-        reasoning: response.data.reasoning || 'Content validation completed',
-        missingElements: response.data.missing_elements || [],
-        suggestions: response.data.suggestions || []
+        success: true,
+        isResume,
+        confidence,
+        reasoning,
+        missingElements,
+        suggestions: isResume ? [] : [`Add missing elements: ${missingElements.join(', ')}`]
       }
     } catch (error) {
       console.error('Quick validation error:', error)
-      
-      // If the quick validation endpoint doesn't exist, fall back to basic validation
-      if (error.response?.status === 404) {
-        return {
-          success: true,
-          isResume: true,
-          confidence: 75,
-          reasoning: 'Filename suggests resume content (content validation unavailable)',
-          missingElements: [],
-          suggestions: []
-        }
+      return {
+        success: false,
+        isResume: false,
+        confidence: 0,
+        reasoning: 'Failed to validate file content',
+        missingElements: [],
+        suggestions: ['Please ensure this is a valid resume document']
       }
-      
-      throw error
     }
   }
 

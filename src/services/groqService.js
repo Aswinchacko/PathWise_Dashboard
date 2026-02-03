@@ -62,10 +62,10 @@ Be strict in your assessment - only classify as a resume if it clearly contains 
       }
 
       const data = await response.json()
-      const content = data.choices[0]?.message?.content || '{}'
+      const responseContent = data.choices[0]?.message?.content || '{}'
       
       // Clean up response - remove markdown code blocks if present
-      const cleanContent = content
+      const cleanContent = responseContent
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim()
@@ -143,9 +143,9 @@ Please respond with a JSON object containing:
       }
 
       const data = await response.json()
-      const content = data.choices[0]?.message?.content || '{}'
+      const responseContent = data.choices[0]?.message?.content || '{}'
       
-      const cleanContent = content
+      const cleanContent = responseContent
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim()

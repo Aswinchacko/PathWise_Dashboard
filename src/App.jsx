@@ -7,6 +7,7 @@ import Roadmap from './pages/Roadmap'
 import Projects from './pages/Projects'
 import Mentors from './pages/Mentors'
 import Jobs from './pages/Jobs'
+import MicroLearning from './pages/MicroLearning'
 import Chatbot from './pages/Chatbot'
 import Resources from './pages/Resources'
 import Community from './pages/Community'
@@ -33,7 +34,7 @@ function App() {
       <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
       <Route path="/subscription/success" element={<SubscriptionSuccess />} />
       <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
-      
+
       {/* Protected Main Routes */}
       <Route path="/" element={
         <ProtectedRoute>
@@ -42,7 +43,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -50,7 +51,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/roadmap" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -58,7 +59,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/projects" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -66,7 +67,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/mentors" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -74,7 +75,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/jobs" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -82,7 +83,15 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
+      <Route path="/micro-learning" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <MicroLearning />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
       <Route path="/chatbot" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -90,7 +99,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/resources" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -98,7 +107,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/community" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -106,7 +115,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/subscription" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -114,7 +123,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/settings" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -122,7 +131,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/resume-parser" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -130,7 +139,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -138,7 +147,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin/users" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -146,7 +155,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin/system" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -154,7 +163,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin/activity" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -162,7 +171,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin/analytics" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -170,7 +179,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin/content" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -178,7 +187,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin/discussions" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -186,7 +195,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       <Route path="/admin/reports" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
@@ -194,7 +203,7 @@ function App() {
           </Layout>
         </ProtectedRoute>
       } />
-      
+
       {/* Catch all route */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

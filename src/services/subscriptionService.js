@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8005/api/subscription'
+const API_BASE_URL = 'http://localhost:8006/api/subscription'
 
 class SubscriptionService {
   // Get all subscription plans

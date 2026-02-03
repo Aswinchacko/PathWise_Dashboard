@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Lightbulb, User, Target, FileText, Upload, CheckSquare, Square, LogOut, Plus, Trash2, Edit3, Save, X, Download, Eye, Calendar, MapPin, Phone, Mail, GraduationCap, Briefcase, Award, Code, Star, Settings as SettingsIcon, Sparkles, Zap, RefreshCw, AlertCircle, CheckCircle, Crown, CreditCard } from 'lucide-react'
+import { Lightbulb, User, Target, FileText, Upload, CheckSquare, Square, LogOut, Plus, Trash2, Edit3, Save, X, Download, Eye, Calendar, MapPin, Phone, Mail, GraduationCap, Briefcase, Award, Code, Star, Settings as SettingsIcon, Sparkles, Zap, RefreshCw, CheckCircle, Crown, CreditCard } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import authService from '../services/authService'
@@ -40,6 +40,8 @@ const Settings = () => {
   const [editing, setEditing] = useState(false)
   const [newSkill, setNewSkill] = useState('')
   const [showResumeModal, setShowResumeModal] = useState(false)
+  const [skillSuggestions, setSkillSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     weeklyReports: false,
@@ -94,14 +96,24 @@ const Settings = () => {
     try {
       const result = await resumeStorageService.getResumes(currentUser.id)
       if (result.success) {
-        setResumes(result.resumes || [])
+        const resumes = result.resumes || []
+        setResumes(resumes)
+        
+        // Auto-update profile with latest resume data if resumes exist
+        if (resumes.length > 0) {
+          await autoUpdateProfileFromLatestResume(resumes)
+        }
+        
         setError('')
       } else {
-        setError(result.error || 'Failed to load resumes')
+        // Don't show error for resume loading - it's optional
+        console.warn('Resume service unavailable:', result.error)
+        setResumes([])
       }
     } catch (err) {
-      console.error('Error loading resumes:', err)
-      setError('Failed to load resumes')
+      // Don't show error for resume loading - it's optional
+      console.warn('Resume service unavailable:', err.message)
+      setResumes([])
     } finally {
       setLoading(false)
     }
@@ -224,17 +236,15 @@ const Settings = () => {
       return
     }
 
-    if (!window.confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
-      return
-    }
-
+    // Direct cancellation without alert
     setSubscriptionLoading(true)
+    
     try {
       const result = await subscriptionService.cancelSubscription(currentUser.id)
       if (result.success) {
-        setSuccess('Subscription canceled successfully')
+        setSuccess('Subscription canceled successfully! You have been moved to the free plan.')
         await loadSubscriptionInfo() // Reload subscription info
-        setTimeout(() => setSuccess(''), 3000)
+        setTimeout(() => setSuccess(''), 5000) // Show success message longer
       } else {
         setError(result.error || 'Failed to cancel subscription')
       }
@@ -245,7 +255,34 @@ const Settings = () => {
     }
   }
 
-  const updateProfileFromResume = async (resumeData) => {
+
+  const autoUpdateProfileFromLatestResume = async (resumes) => {
+    try {
+      // Sort resumes by upload date (most recent first)
+      const sortedResumes = resumes.sort((a, b) => {
+        const dateA = new Date(a.uploaded_at || a.created_at || 0)
+        const dateB = new Date(b.uploaded_at || b.created_at || 0)
+        return dateB - dateA
+      })
+      
+      const latestResume = sortedResumes[0]
+      if (!latestResume) return
+      
+      console.log('Auto-updating profile from latest resume:', latestResume.name)
+      
+      // Get the full resume data
+      const result = await resumeStorageService.getResume(latestResume._id)
+      if (result.success && result.data) {
+        await updateProfileFromResume(result.data, false) // Don't show success message for auto-update
+        console.log('Profile auto-updated from latest resume successfully')
+      }
+    } catch (err) {
+      console.error('Error auto-updating profile from latest resume:', err)
+      // Don't show error to user for auto-update, just log it
+    }
+  }
+
+  const updateProfileFromResume = async (resumeData, showSuccessMessage = true) => {
     try {
       const result = await profileService.updateProfileFromResume(resumeData)
       if (result.success) {
@@ -258,18 +295,26 @@ const Settings = () => {
           setCurrentUser(updatedUser)
         }
         
-        setSuccess('Profile updated from resume successfully!')
-        console.log('Profile updated from resume data successfully')
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(''), 3000)
+        if (showSuccessMessage) {
+          setSuccess('Profile updated from resume successfully!')
+          console.log('Profile updated from resume data successfully')
+          
+          // Clear success message after 3 seconds
+          setTimeout(() => setSuccess(''), 3000)
+        } else {
+          console.log('Profile auto-updated from resume data successfully')
+        }
       } else {
         console.error('Failed to update profile from resume:', result.error)
-        setError(result.error || 'Failed to update profile from resume')
+        if (showSuccessMessage) {
+          setError(result.error || 'Failed to update profile from resume')
+        }
       }
     } catch (err) {
       console.error('Error updating profile from resume:', err)
-      setError('Error updating profile from resume')
+      if (showSuccessMessage) {
+        setError('Error updating profile from resume')
+      }
     }
   }
 
@@ -322,7 +367,7 @@ const Settings = () => {
     try {
       const result = await resumeStorageService.getResume(resumeId)
       if (result.success && result.data) {
-        await updateProfileFromResume(result.data)
+        await updateProfileFromResume(result.data, true) // Show success message for manual application
         setSuccess('Resume applied to profile successfully!')
         console.log('Profile updated from selected resume')
         
@@ -339,45 +384,15 @@ const Settings = () => {
     }
   }
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = () => {
     console.log('handleLogout called') // Debug log
-    try {
-      console.log('Clearing authentication data...') // Debug log
-      
-      // Clear authentication data
-      authService.logout()
-      
-      console.log('Authentication data cleared, clearing component state...') // Debug log
-      
-      // Clear component state
-      setCurrentUser(null)
-      setProfile({
-        full_name: '',
-        email: '',
-        phone: '',
-        location: '',
-        summary: '',
-        skills: [],
-        education: [],
-        experience: [],
-        projects: [],
-        certifications: [],
-        languages: []
-      })
-      setResumes([])
-      setError('')
-      setSuccess('')
-      
-      console.log('Redirecting to login...') // Debug log
-      
-      // Force full page reload to ensure authentication check
-      window.location.href = '/login'
-    } catch (err) {
-      console.error('Logout error:', err)
-      // Force navigation even if logout fails
-      window.location.href = '/login'
-    }
-  }, [])
+    
+    // Clear authentication data immediately - synchronous operation
+    authService.logout()
+    
+    // Force immediate navigation - don't wait for any state updates or background processes
+    window.location.href = '/login'
+  }
 
   const handleProfileSave = async () => {
     setLoading(true)
@@ -415,6 +430,59 @@ const Settings = () => {
     }
   }
 
+  // Common skills database for suggestions
+  const commonSkills = [
+    'JavaScript', 'Python', 'Java', 'React', 'Node.js', 'TypeScript', 'HTML', 'CSS',
+    'SQL', 'MongoDB', 'PostgreSQL', 'AWS', 'Docker', 'Git', 'Linux', 'Agile',
+    'Machine Learning', 'Data Analysis', 'Project Management', 'Leadership',
+    'Communication', 'Problem Solving', 'Teamwork', 'Time Management',
+    'Angular', 'Vue.js', 'Express.js', 'Django', 'Flask', 'Spring Boot',
+    'REST API', 'GraphQL', 'Microservices', 'DevOps', 'Kubernetes',
+    'React Native', 'Flutter', 'iOS', 'Android', 'Swift', 'Kotlin',
+    'C++', 'C#', 'PHP', 'Ruby', 'Go', 'Rust', 'Scala',
+    'TensorFlow', 'PyTorch', 'Pandas', 'NumPy', 'Scikit-learn',
+    'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator',
+    'Salesforce', 'Microsoft Office', 'Excel', 'PowerPoint', 'Word',
+    'Jira', 'Confluence', 'Slack', 'Trello', 'Asana',
+    'Analytics', 'SEO', 'SEM', 'Digital Marketing', 'Content Writing',
+    'UI/UX Design', 'Product Management', 'Business Analysis',
+    'Financial Modeling', 'Accounting', 'Tax Preparation',
+    'Customer Service', 'Sales', 'Marketing', 'Public Relations',
+    'Teaching', 'Training', 'Mentoring', 'Coaching',
+    'Research', 'Writing', 'Editing', 'Translation',
+    'Photography', 'Video Editing', 'Graphic Design', 'Web Design'
+  ]
+
+  const getSkillSuggestions = (input) => {
+    if (!input.trim()) return []
+    
+    const filtered = commonSkills.filter(skill => 
+      skill.toLowerCase().includes(input.toLowerCase()) &&
+      !profile.skills.includes(skill)
+    )
+    return filtered.slice(0, 8) // Show max 8 suggestions
+  }
+
+  const handleSkillInputChange = (e) => {
+    const value = e.target.value
+    setNewSkill(value)
+    
+    if (value.trim()) {
+      const suggestions = getSkillSuggestions(value)
+      setSkillSuggestions(suggestions)
+      setShowSuggestions(suggestions.length > 0)
+    } else {
+      setSkillSuggestions([])
+      setShowSuggestions(false)
+    }
+  }
+
+  const selectSkill = (skill) => {
+    setNewSkill(skill)
+    setShowSuggestions(false)
+    setSkillSuggestions([])
+  }
+
   const addSkill = () => {
     if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
       setProfile(prev => ({
@@ -422,6 +490,8 @@ const Settings = () => {
         skills: [...prev.skills, newSkill.trim()]
       }))
       setNewSkill('')
+      setShowSuggestions(false)
+      setSkillSuggestions([])
     }
   }
 
@@ -575,6 +645,19 @@ const Settings = () => {
             </div>
           )}
 
+          {/* Resume Auto-Update Info */}
+          {resumes.length > 0 && (
+            <div className="resume-auto-update-info">
+              <div className="auto-update-indicator">
+                <RefreshCw size={16} />
+                <span>Profile automatically updated from latest resume</span>
+              </div>
+              <div className="resume-count">
+                {resumes.length} resume{resumes.length !== 1 ? 's' : ''} uploaded
+              </div>
+            </div>
+          )}
+
           {/* Experience Summary */}
           {profile.experience && profile.experience.length > 0 && (
             <div className="profile-experience">
@@ -675,7 +758,7 @@ const Settings = () => {
                   <>
                     <div className="subscription-info">
                       <div className="subscription-plan">
-                        <span className={`plan-badge ${subscriptionInfo.subscription.plan}`}>
+                        <span className={`plan-badge ${subscriptionInfo.subscription.status === 'canceled' ? 'free' : subscriptionInfo.subscription.plan}`}>
                           {subscriptionInfo.plan_details.name}
                         </span>
                         <span className="plan-price">
@@ -686,24 +769,30 @@ const Settings = () => {
                       </div>
                       <div className="subscription-status">
                         Status: <span className={`status ${subscriptionInfo.subscription.status}`}>
-                          {subscriptionInfo.subscription.status}
+                          {subscriptionInfo.subscription.status === 'canceled' ? 'Canceled (Free Plan)' : subscriptionInfo.subscription.status}
                         </span>
                       </div>
-                      {subscriptionInfo.subscription.end_date && (
+                      {subscriptionInfo.subscription.status === 'canceled' && subscriptionInfo.subscription.previous_plan && (
+                        <div className="subscription-canceled-info">
+                          <span className="canceled-note">
+                            Previously: {subscriptionInfo.subscription.previous_plan} plan
+                          </span>
+                        </div>
+                      )}
+                      {subscriptionInfo.subscription.end_date && subscriptionInfo.subscription.status === 'active' && (
                         <div className="subscription-end">
-                          {subscriptionInfo.subscription.status === 'active' ? 'Renews' : 'Expires'}: {' '}
-                          {new Date(subscriptionInfo.subscription.end_date).toLocaleDateString()}
+                          Renews: {new Date(subscriptionInfo.subscription.end_date).toLocaleDateString()}
                         </div>
                       )}
                     </div>
                     <div className="subscription-actions">
-                      {subscriptionInfo.subscription.plan === 'free' ? (
+                      {subscriptionInfo.subscription.plan === 'free' || subscriptionInfo.subscription.status === 'canceled' ? (
                         <button 
                           className="upgrade-btn-compact"
                           onClick={() => setShowSubscriptionModal(true)}
                         >
                           <Crown size={16} />
-                          Upgrade
+                          {subscriptionInfo.subscription.status === 'canceled' ? 'Resubscribe' : 'Upgrade'}
                         </button>
                       ) : (
                         <button 
@@ -753,14 +842,14 @@ const Settings = () => {
                   className="logout-btn-compact" 
                   onClick={(e) => {
                     e.preventDefault()
+                    e.stopPropagation()
                     console.log('Logout button clicked') // Debug log
                     handleLogout()
                   }}
-                  disabled={loading}
                   type="button"
                 >
                   <LogOut size={16} />
-                  {loading ? 'Logging out...' : 'Logout'}
+                  Logout
                 </button>
               </div>
             </div>
@@ -834,17 +923,42 @@ const Settings = () => {
                 
                 <div className="form-group">
                   <label>Skills</label>
-                  <div className="skills-input">
-                    <input
-                      type="text"
-                      value={newSkill}
-                      onChange={(e) => setNewSkill(e.target.value)}
-                      placeholder="Add a skill"
-                      onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                    />
-                    <button onClick={addSkill} className="add-btn">
-                      <Plus size={16} />
-                    </button>
+                  <div className="skills-input-container">
+                    <div className="skills-input">
+                      <input
+                        type="text"
+                        value={newSkill}
+                        onChange={handleSkillInputChange}
+                        onFocus={() => {
+                          if (skillSuggestions.length > 0) {
+                            setShowSuggestions(true)
+                          }
+                        }}
+                        onBlur={() => {
+                          // Delay hiding suggestions to allow clicking on them
+                          setTimeout(() => setShowSuggestions(false), 200)
+                        }}
+                        placeholder="Add a skill"
+                        onKeyPress={(e) => e.key === 'Enter' && addSkill()}
+                      />
+                      <button onClick={addSkill} className="add-btn">
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                    {showSuggestions && skillSuggestions.length > 0 && (
+                      <div className="skill-suggestions">
+                        {skillSuggestions.map((skill, index) => (
+                          <div
+                            key={index}
+                            className="skill-suggestion-item"
+                            onClick={() => selectSkill(skill)}
+                          >
+                            <Code size={14} />
+                            <span>{skill}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="skills-list">
                     {profile.skills.map((skill, index) => (
@@ -1022,6 +1136,7 @@ const Settings = () => {
         userId={currentUser?.id}
         currentPlan={subscriptionInfo?.subscription?.plan || 'free'}
       />
+
     </div>
   )
 }

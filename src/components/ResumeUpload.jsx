@@ -75,24 +75,39 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
           return
         }
         
-        // For PDF/DOCX files with valid names, proceed with basic validation
-        // We'll rely on the backend parsing to catch non-resume content
+        // For PDF/DOCX files with valid names, do a quick parse to validate content
         try {
-          // Set a basic validation result for PDF/DOCX files
+          console.log('Validating PDF/DOCX content with quick parse:', file.name)
+          
+          // Use the existing parse endpoint to check if content is resume-like
+          const quickParseResult = await resumeService.quickValidateResume(file, userId)
+          
+          console.log('Quick parse result:', quickParseResult)
+          
+          if (!quickParseResult.success || !quickParseResult.isResume) {
+            validationPassed = false
+            setUploadStatus('error')
+            onError?.(`This file doesn't appear to contain resume content. ${quickParseResult.reasoning || 'Please upload a file that contains professional resume information.'}`)
+            return
+          }
+          
+          // Set validation result based on quick parse
           setValidationResult({
             success: true,
             isResume: true,
-            confidence: 85, // Higher confidence for files with resume-like names
-            reasoning: 'Filename suggests resume content - will be validated during parsing',
-            missingElements: [],
-            suggestions: []
+            confidence: quickParseResult.confidence || 80,
+            reasoning: quickParseResult.reasoning || 'File contains resume-like content',
+            missingElements: quickParseResult.missingElements || [],
+            suggestions: quickParseResult.suggestions || []
           })
+          
+          console.log('Content validation passed! Proceeding to parsing...')
         } catch (error) {
           // If validation fails, reject the file
           console.error('PDF/DOCX validation error:', error)
           validationPassed = false
           setUploadStatus('error')
-          onError?.('Failed to validate file content. Please ensure this is a valid resume document.')
+          onError?.(`Failed to validate file content: ${error.message}. Please ensure this is a valid resume document.`)
           return
         }
       }
@@ -266,7 +281,7 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
           <div className="upload-content">
             <Brain className="upload-icon spinning" />
             <h3>Validating Resume...</h3>
-            <p>{uploadedFile?.type === 'text/plain' ? 'AI is analyzing content for resume structure' : 'Validating filename and file type'}</p>
+            <p>{uploadedFile?.type === 'text/plain' ? 'AI is analyzing content for resume structure' : 'Validating content structure'}</p>
           </div>
         ) : isUploading ? (
           <div className="upload-content">
@@ -329,7 +344,7 @@ const ResumeUpload = ({ onResumeParsed, onError, userId }) => {
                   <li>Include work experience or education</li>
                   <li>Have contact details (email/phone)</li>
                   <li><strong>Use resume-related filename (required for PDF/DOCX)</strong></li>
-                  <li><strong>AI validates TXT content, filename validates PDF/DOCX</strong></li>
+                  <li><strong>AI validates TXT content, structure validates PDF/DOCX</strong></li>
                 </ul>
               </div>
             </div>

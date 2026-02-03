@@ -1,8 +1,8 @@
 // API Configuration
 // Note: In production, use environment variables or backend proxy
 export const API_CONFIG = {
-  SERPER_API_KEY: import.meta.env.VITE_SERPER_API_KEY,
-  GROQ_API_KEY: import.meta.env.VITE_GROQ_API_KEY,
+  SERPER_API_KEY: 'a8df1a33b6fca0c0a6e794d18980aaa9f5dd02ee',
+  GROQ_API_KEY: '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',
   SERPER_API_URL: 'https://google.serper.dev/search',
   GROQ_API_URL: 'https://api.groq.com/openai/v1/chat/completions',
   GROQ_MODEL: 'llama-3.1-8b-instant'
@@ -20,3 +20,4 @@ export const SEARCH_CONFIG = {
   TEMPERATURE: 0.1,
   MAX_TOKENS: 4000
 }
+

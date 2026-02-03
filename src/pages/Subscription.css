@@ -265,6 +265,19 @@
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
+.cta-button.current-plan {
+  background: var(--success-100);
+  color: var(--success-700);
+  border: 1px solid var(--success-200);
+  cursor: not-allowed;
+}
+
+.cta-button.current-plan:hover {
+  background: var(--success-100);
+  transform: none;
+  box-shadow: none;
+}
+
 /* Card Features */
 .card-features {
   padding: var(--spacing-xl);

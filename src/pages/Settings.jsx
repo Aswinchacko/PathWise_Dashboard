@@ -47,7 +47,7 @@ const Settings = () => {
     weeklyReports: false,
     theme: 'auto'
   })
-  
+
   // Subscription state
   const [subscriptionInfo, setSubscriptionInfo] = useState(null)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
@@ -59,7 +59,7 @@ const Settings = () => {
       // Check if user is authenticated
       const user = authService.getCurrentUser()
       const token = authService.getToken()
-      
+
       if (!user || !token) {
         console.warn('User not authenticated, redirecting to login')
         navigate('/login')
@@ -91,19 +91,19 @@ const Settings = () => {
 
   const loadResumes = useCallback(async () => {
     if (!currentUser?.id) return
-    
+
     setLoading(true)
     try {
       const result = await resumeStorageService.getResumes(currentUser.id)
       if (result.success) {
         const resumes = result.resumes || []
         setResumes(resumes)
-        
+
         // Auto-update profile with latest resume data if resumes exist
         if (resumes.length > 0) {
           await autoUpdateProfileFromLatestResume(resumes)
         }
-        
+
         setError('')
       } else {
         // Don't show error for resume loading - it's optional
@@ -126,7 +126,7 @@ const Settings = () => {
       const result = await profileService.getProfile()
       if (result.success && result.data) {
         const userData = result.data.user || result.data
-        
+
         // Create comprehensive profile from DB data
         const profileData = {
           full_name: userData.full_name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Your Name',
@@ -141,9 +141,9 @@ const Settings = () => {
           certifications: Array.isArray(userData.certifications) ? userData.certifications : [],
           languages: Array.isArray(userData.languages) ? userData.languages : []
         }
-        
+
         setProfile(profileData)
-        
+
         // Update preferences if available
         if (userData.preferences) {
           setPreferences(prev => ({
@@ -153,7 +153,7 @@ const Settings = () => {
             theme: userData.preferences.theme || prev.theme
           }))
         }
-        
+
         setError('')
       } else {
         setError(result.error || 'Failed to load profile')
@@ -166,7 +166,7 @@ const Settings = () => {
 
   const loadSubscriptionInfo = useCallback(async () => {
     if (!currentUser?.id) return
-    
+
     try {
       const result = await subscriptionService.getUserSubscription(currentUser.id)
       if (result.success) {
@@ -238,7 +238,7 @@ const Settings = () => {
 
     // Direct cancellation without alert
     setSubscriptionLoading(true)
-    
+
     try {
       const result = await subscriptionService.cancelSubscription(currentUser.id)
       if (result.success) {
@@ -264,12 +264,12 @@ const Settings = () => {
         const dateB = new Date(b.uploaded_at || b.created_at || 0)
         return dateB - dateA
       })
-      
+
       const latestResume = sortedResumes[0]
       if (!latestResume) return
-      
+
       console.log('Auto-updating profile from latest resume:', latestResume.name)
-      
+
       // Get the full resume data
       const result = await resumeStorageService.getResume(latestResume._id)
       if (result.success && result.data) {
@@ -288,17 +288,17 @@ const Settings = () => {
       if (result.success) {
         // Reload complete profile from server to ensure consistency
         await loadProfile()
-        
+
         // Update current user in auth service
         const updatedUser = authService.getCurrentUser()
         if (updatedUser) {
           setCurrentUser(updatedUser)
         }
-        
+
         if (showSuccessMessage) {
           setSuccess('Profile updated from resume successfully!')
           console.log('Profile updated from resume data successfully')
-          
+
           // Clear success message after 3 seconds
           setTimeout(() => setSuccess(''), 3000)
         } else {
@@ -363,14 +363,14 @@ const Settings = () => {
     setLoading(true)
     setError('')
     setSuccess('')
-    
+
     try {
       const result = await resumeStorageService.getResume(resumeId)
       if (result.success && result.data) {
         await updateProfileFromResume(result.data, true) // Show success message for manual application
         setSuccess('Resume applied to profile successfully!')
         console.log('Profile updated from selected resume')
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(''), 3000)
       } else {
@@ -384,40 +384,43 @@ const Settings = () => {
     }
   }
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
   const handleLogout = () => {
     console.log('handleLogout called') // Debug log
-    
-    // Clear authentication data immediately - synchronous operation
+    setIsLoggingOut(true)
+
+    // Clear authentication data immediately
     authService.logout()
-    
-    // Force immediate navigation - don't wait for any state updates or background processes
-    window.location.href = '/login'
+
+    // Use navigate for smoother transition within SPA
+    navigate('/login')
   }
 
   const handleProfileSave = async () => {
     setLoading(true)
     setError('')
     setSuccess('')
-    
+
     try {
       const result = await profileService.updateProfile(profile)
       if (result.success) {
         setEditing(false)
         setSuccess('Profile saved successfully!')
-        
+
         // Reload profile to ensure consistency with server
         await loadProfile()
-        
+
         // Update current user in auth service if user data is returned
         if (result.data?.user) {
           const updatedUser = { ...currentUser, ...result.data.user }
           localStorage.setItem('user', JSON.stringify(updatedUser))
           setCurrentUser(updatedUser)
         }
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(''), 3000)
-        
+
         console.log('Profile saved successfully')
       } else {
         setError(result.error || 'Failed to save profile')
@@ -455,8 +458,8 @@ const Settings = () => {
 
   const getSkillSuggestions = (input) => {
     if (!input.trim()) return []
-    
-    const filtered = commonSkills.filter(skill => 
+
+    const filtered = commonSkills.filter(skill =>
       skill.toLowerCase().includes(input.toLowerCase()) &&
       !profile.skills.includes(skill)
     )
@@ -466,7 +469,7 @@ const Settings = () => {
   const handleSkillInputChange = (e) => {
     const value = e.target.value
     setNewSkill(value)
-    
+
     if (value.trim()) {
       const suggestions = getSkillSuggestions(value)
       setSkillSuggestions(suggestions)
@@ -524,7 +527,7 @@ const Settings = () => {
   const updateEducation = (index, field, value) => {
     setProfile(prev => ({
       ...prev,
-      education: prev.education.map((edu, i) => 
+      education: prev.education.map((edu, i) =>
         i === index ? { ...edu, [field]: value } : edu
       )
     }))
@@ -552,7 +555,7 @@ const Settings = () => {
   const updateExperience = (index, field, value) => {
     setProfile(prev => ({
       ...prev,
-      experience: prev.experience.map((exp, i) => 
+      experience: prev.experience.map((exp, i) =>
         i === index ? { ...exp, [field]: value } : exp
       )
     }))
@@ -560,7 +563,7 @@ const Settings = () => {
 
   return (
     <div className="settings-page">
-      <motion.div 
+      <motion.div
         className="settings-header"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -762,9 +765,9 @@ const Settings = () => {
                           {subscriptionInfo.plan_details.name}
                         </span>
                         <span className="plan-price">
-                          {subscriptionInfo.plan_details.price_display || 
-                           (subscriptionInfo.plan_details.price > 0 ? 
-                            `₹${subscriptionInfo.plan_details.price}/month` : 'Free')}
+                          {subscriptionInfo.plan_details.price_display ||
+                            (subscriptionInfo.plan_details.price > 0 ?
+                              `₹${subscriptionInfo.plan_details.price}/month` : 'Free')}
                         </span>
                       </div>
                       <div className="subscription-status">
@@ -787,7 +790,7 @@ const Settings = () => {
                     </div>
                     <div className="subscription-actions">
                       {subscriptionInfo.subscription.plan === 'free' || subscriptionInfo.subscription.status === 'canceled' ? (
-                        <button 
+                        <button
                           className="upgrade-btn-compact"
                           onClick={() => setShowSubscriptionModal(true)}
                         >
@@ -795,7 +798,7 @@ const Settings = () => {
                           {subscriptionInfo.subscription.status === 'canceled' ? 'Resubscribe' : 'Upgrade'}
                         </button>
                       ) : (
-                        <button 
+                        <button
                           className="manage-btn-compact"
                           onClick={handleCancelSubscription}
                           disabled={subscriptionLoading}
@@ -838,8 +841,8 @@ const Settings = () => {
                     </div>
                   )}
                 </div>
-                <button 
-                  className="logout-btn-compact" 
+                <button
+                  className="logout-btn-compact"
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -847,9 +850,10 @@ const Settings = () => {
                     handleLogout()
                   }}
                   type="button"
+                  disabled={isLoggingOut}
                 >
                   <LogOut size={16} />
-                  Logout
+                  {isLoggingOut ? 'Logging out...' : 'Logout'}
                 </button>
               </div>
             </div>
@@ -889,7 +893,7 @@ const Settings = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="form-row">
                   <div className="form-group">
                     <label>Phone</label>
@@ -910,7 +914,7 @@ const Settings = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="form-group">
                   <label>Professional Summary</label>
                   <textarea
@@ -920,7 +924,7 @@ const Settings = () => {
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="form-group">
                   <label>Skills</label>
                   <div className="skills-input-container">
@@ -971,7 +975,7 @@ const Settings = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="form-actions">
                   <button onClick={handleProfileSave} className="btn btn-primary" disabled={loading}>
                     <Save size={16} />
@@ -994,14 +998,14 @@ const Settings = () => {
           <div className="resume-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Resume Details</h3>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setShowResumeModal(false)}
               >
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-content">
               <div className="resume-details">
                 <div className="resume-header-info">

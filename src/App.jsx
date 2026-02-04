@@ -23,7 +23,7 @@ import SubscriptionCancel from './pages/SubscriptionCancel'
 import Subscription from './pages/Subscription'
 
 function App() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
     <Routes>

@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
-import { 
-  Lightbulb, 
-  FileText, 
-  ExternalLink, 
-  Search, 
-  Filter, 
-  Clock, 
+import {
+  Lightbulb,
+  FileText,
+  ExternalLink,
+  Search,
+  Filter,
+  Clock,
   Star,
   BookOpen,
   Code,
@@ -90,17 +90,17 @@ const Resources = () => {
   const loadInitialData = async () => {
     try {
       setLoading(true)
-      
+
       // Load domains
       const domainsData = await resourcesService.getAvailableDomains()
       setDomains(domainsData)
-      
+
       // Load all resources (local + scraped if enabled)
-      const allResources = includeScrapedResources 
+      const allResources = includeScrapedResources
         ? await resourcesService.getAllResourcesCombined(true)
         : await Promise.resolve(resourcesService.getAllResources())
       setResources(allResources)
-      
+
       // Load stats
       const resourceStats = await resourcesService.getResourceStats()
       setStats(resourceStats)
@@ -112,7 +112,7 @@ const Resources = () => {
       console.error('Error loading resources:', error)
       // Set fallback data if API fails
       setResources(resourcesService.getAllResources())
-      setStats({ 
+      setStats({
         totalResources: resourcesService.getAllResources().length,
         byType: {},
         byDifficulty: {}
@@ -143,11 +143,11 @@ const Resources = () => {
           resourcesService.getResourcesForDomain(domain),
           resourcesService.getScrapedResourcesByDomain(domain)
         ])
-        
+
         // Combine and deduplicate
         const combined = [...localResources]
         const seenUrls = new Set(localResources.map(r => r.url))
-        
+
         scrapedResources.forEach(resource => {
           if (!seenUrls.has(resource.url)) {
             combined.push({
@@ -157,7 +157,7 @@ const Resources = () => {
             })
           }
         })
-        
+
         setResources(combined)
       } else {
         const domainResources = await resourcesService.getResourcesForDomain(domain)
@@ -171,80 +171,80 @@ const Resources = () => {
   // Scraping functions
   const handleScrapeQuery = async () => {
     if (!scrapingQuery.trim()) return
-    
+
     setScrapingStatus({ type: 'loading', message: 'Scraping resources...' })
-    
+
     try {
       const result = await resourcesService.scrapeResourcesForQuery(
-        scrapingQuery, 
-        selectedDomain, 
+        scrapingQuery,
+        selectedDomain,
         { maxResults: 50 }
       )
-      
+
       if (result.success) {
-        setScrapingStatus({ 
-          type: 'success', 
-          message: `Successfully scraped ${result.data.resourcesFound} resources!` 
+        setScrapingStatus({
+          type: 'success',
+          message: `Successfully scraped ${result.data.resourcesFound} resources!`
         })
-        
+
         // Refresh resources to show new scraped data
         await loadInitialData()
-        
+
         // Clear the query
         setScrapingQuery('')
       } else {
-        setScrapingStatus({ 
-          type: 'error', 
-          message: result.error || 'Scraping failed' 
+        setScrapingStatus({
+          type: 'error',
+          message: result.error || 'Scraping failed'
         })
       }
     } catch (error) {
-      setScrapingStatus({ 
-        type: 'error', 
-        message: 'Network error during scraping' 
+      setScrapingStatus({
+        type: 'error',
+        message: 'Network error during scraping'
       })
     }
-    
+
     // Clear status after 5 seconds
     setTimeout(() => setScrapingStatus(null), 5000)
   }
 
   const handleScrapeUrl = async () => {
     if (!scrapingUrl.trim()) return
-    
+
     setScrapingStatus({ type: 'loading', message: 'Scraping URL...' })
-    
+
     try {
       const result = await resourcesService.scrapeSpecificUrl(
-        scrapingUrl, 
-        selectedDomain, 
+        scrapingUrl,
+        selectedDomain,
         scrapingQuery || 'General'
       )
-      
+
       if (result.success) {
-        setScrapingStatus({ 
-          type: 'success', 
-          message: 'Successfully scraped URL!' 
+        setScrapingStatus({
+          type: 'success',
+          message: 'Successfully scraped URL!'
         })
-        
+
         // Refresh resources
         await loadInitialData()
-        
+
         // Clear the URL
         setScrapingUrl('')
       } else {
-        setScrapingStatus({ 
-          type: 'error', 
-          message: result.error || 'URL scraping failed' 
+        setScrapingStatus({
+          type: 'error',
+          message: result.error || 'URL scraping failed'
         })
       }
     } catch (error) {
-      setScrapingStatus({ 
-        type: 'error', 
-        message: 'Network error during URL scraping' 
+      setScrapingStatus({
+        type: 'error',
+        message: 'Network error during URL scraping'
       })
     }
-    
+
     // Clear status after 5 seconds
     setTimeout(() => setScrapingStatus(null), 5000)
   }
@@ -265,39 +265,39 @@ const Resources = () => {
   // AI-powered resource search based on user's roadmap
   const handleAISearch = async () => {
     if (!userRoadmap) {
-      setAiSearchStatus({ 
-        type: 'error', 
-        message: 'No roadmap found. Please create a roadmap first.' 
+      setAiSearchStatus({
+        type: 'error',
+        message: 'No roadmap found. Please create a roadmap first.'
       })
       return
     }
 
     setAiSearchStatus({ type: 'loading', message: 'Searching for resources based on your roadmap...' })
-    
+
     try {
       const userId = localStorage.getItem('userId') || 'demo-user'
       const result = await resourcesService.searchResourcesWithAI(userId, 20)
-      
+
       if (result.success) {
         setAiResources(result.data.resources)
         setShowAiResources(true)
-        setAiSearchStatus({ 
-          type: 'success', 
-          message: `Found ${result.data.totalFound} resources for your ${result.data.roadmap.domain} roadmap!` 
+        setAiSearchStatus({
+          type: 'success',
+          message: `Found ${result.data.totalFound} resources for your ${result.data.roadmap.domain} roadmap!`
         })
       } else {
-        setAiSearchStatus({ 
-          type: 'error', 
-          message: result.error || 'AI search failed' 
+        setAiSearchStatus({
+          type: 'error',
+          message: result.error || 'AI search failed'
         })
       }
     } catch (error) {
-      setAiSearchStatus({ 
-        type: 'error', 
-        message: 'Network error during AI search' 
+      setAiSearchStatus({
+        type: 'error',
+        message: 'Network error during AI search'
       })
     }
-    
+
     // Clear status after 5 seconds
     setTimeout(() => setAiSearchStatus(null), 5000)
   }
@@ -315,16 +315,16 @@ const Resources = () => {
           // Search both local and scraped resources
           const [localResults, scrapedResults] = await Promise.all([
             Promise.resolve(resourcesService.searchResources(searchQuery, selectedDomain)),
-            resourcesService.searchScrapedResources(searchQuery, { 
+            resourcesService.searchScrapedResources(searchQuery, {
               domain: selectedDomain,
-              limit: 100 
+              limit: 100
             })
           ])
-          
+
           // Combine results
           const combined = [...localResults]
           const seenUrls = new Set(localResults.map(r => r.url))
-          
+
           scrapedResults.forEach(resource => {
             if (!seenUrls.has(resource.url)) {
               combined.push({
@@ -334,7 +334,7 @@ const Resources = () => {
               })
             }
           })
-          
+
           filtered = combined
         } catch (error) {
           console.error('Search error:', error)
@@ -381,7 +381,7 @@ const Resources = () => {
 
   return (
     <div className="resources-page">
-      <motion.div 
+      <motion.div
         className="resources-header"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -390,7 +390,6 @@ const Resources = () => {
         <div className="header-content">
           <div className="header-left">
             <h1>Learning Resources</h1>
-            <p>Discover curated learning materials and resources with AI-powered web scraping</p>
             {stats && (
               <div className="stats">
                 <span className="stat">
@@ -416,7 +415,7 @@ const Resources = () => {
           </div>
           <div className="header-actions">
             {userRoadmap && (
-              <button 
+              <button
                 className="ai-search-btn"
                 onClick={handleAISearch}
                 disabled={aiSearchStatus?.type === 'loading'}
@@ -430,7 +429,7 @@ const Resources = () => {
                 AI Search
               </button>
             )}
-            <button 
+            <button
               className={`toggle-btn ${includeScrapedResources ? 'active' : ''}`}
               onClick={toggleScrapedResources}
               title="Include scraped resources"
@@ -446,7 +445,7 @@ const Resources = () => {
       </motion.div>
 
       {/* Search and Filters Row */}
-      <motion.div 
+      <motion.div
         className="search-filters-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -462,7 +461,7 @@ const Resources = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button 
+            <button
               className="clear-search"
               onClick={() => setSearchQuery('')}
               title="Clear search"
@@ -471,13 +470,13 @@ const Resources = () => {
             </button>
           )}
         </div>
-        
+
         {/* Filter Controls */}
         <div className="filters">
           <div className="filter-group">
             <Filter size={16} />
-            <select 
-              value={selectedType} 
+            <select
+              value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
             >
               {resourceTypes.map(type => (
@@ -485,11 +484,11 @@ const Resources = () => {
               ))}
             </select>
           </div>
-          
+
           <div className="filter-group">
             <Star size={16} />
-            <select 
-              value={selectedDifficulty} 
+            <select
+              value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
             >
               {difficulties.map(difficulty => (
@@ -502,7 +501,7 @@ const Resources = () => {
 
       {/* AI Search Status */}
       {aiSearchStatus && (
-        <motion.div 
+        <motion.div
           className={`ai-search-status ${aiSearchStatus.type}`}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -516,21 +515,21 @@ const Resources = () => {
       )}
 
       {/* Tabs Navigation */}
-      <motion.div 
+      <motion.div
         className="tabs-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15 }}
       >
         <div className="tabs-nav">
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'browse' ? 'active' : ''}`}
             onClick={() => setActiveTab('browse')}
           >
             <Search size={18} />
             Browse Resources
           </button>
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'scrape' ? 'active' : ''}`}
             onClick={() => setActiveTab('scrape')}
           >
@@ -542,7 +541,7 @@ const Resources = () => {
 
       {/* Web Scraping Section */}
       {activeTab === 'scrape' && (
-        <motion.div 
+        <motion.div
           className="scraping-section"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -553,7 +552,7 @@ const Resources = () => {
               <h3>🤖 AI-Powered Web Scraping</h3>
               <p>Automatically discover and collect learning resources from across the web</p>
             </div>
-            
+
             <div className="scraping-forms">
               {/* Query Scraping */}
               <div className="scraping-form">
@@ -569,7 +568,7 @@ const Resources = () => {
                     onChange={(e) => setScrapingQuery(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleScrapeQuery()}
                   />
-                  <button 
+                  <button
                     className="scrape-btn"
                     onClick={handleScrapeQuery}
                     disabled={!scrapingQuery.trim() || scrapingStatus?.type === 'loading'}
@@ -598,7 +597,7 @@ const Resources = () => {
                     onChange={(e) => setScrapingUrl(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleScrapeUrl()}
                   />
-                  <button 
+                  <button
                     className="scrape-btn"
                     onClick={handleScrapeUrl}
                     disabled={!scrapingUrl.trim() || scrapingStatus?.type === 'loading'}
@@ -616,7 +615,7 @@ const Resources = () => {
 
             {/* Scraping Status */}
             {scrapingStatus && (
-              <motion.div 
+              <motion.div
                 className={`scraping-status ${scrapingStatus.type}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -656,45 +655,45 @@ const Resources = () => {
 
       {/* Browse by Domain Row - Only show in browse mode */}
       {activeTab === 'browse' && (
-        <motion.div 
+        <motion.div
           className="domains-section"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-        <h3>Browse by Domain</h3>
-        <div className="domains-grid">
-          <motion.button
-            className={`domain-btn ${!selectedDomain ? 'active' : ''}`}
-            onClick={() => {
-              setSelectedDomain(null)
-              loadInitialData()
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            All
-          </motion.button>
-          {domains.map((domain, index) => (
+          <h3>Browse by Domain</h3>
+          <div className="domains-grid">
             <motion.button
-              key={domain}
-              className={`domain-btn ${selectedDomain === domain ? 'active' : ''}`}
-              onClick={() => handleDomainSelect(domain)}
+              className={`domain-btn ${!selectedDomain ? 'active' : ''}`}
+              onClick={() => {
+                setSelectedDomain(null)
+                loadInitialData()
+              }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.05 }}
             >
-              {domain}
+              All
             </motion.button>
-          ))}
-        </div>
+            {domains.map((domain, index) => (
+              <motion.button
+                key={domain}
+                className={`domain-btn ${selectedDomain === domain ? 'active' : ''}`}
+                onClick={() => handleDomainSelect(domain)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                {domain}
+              </motion.button>
+            ))}
+          </div>
         </motion.div>
       )}
 
       {/* Resources Grid */}
-      <motion.div 
+      <motion.div
         className="resources-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -706,7 +705,7 @@ const Resources = () => {
               <>
                 AI-Powered Resources for Your Roadmap
                 <span className="count">({filteredResources.length})</span>
-                <button 
+                <button
                   className="clear-ai-btn"
                   onClick={() => {
                     setShowAiResources(false)
@@ -727,7 +726,7 @@ const Resources = () => {
           {showAiResources && userRoadmap && (
             <div className="ai-context">
               <p>
-                <strong>Goal:</strong> {userRoadmap.goal} | 
+                <strong>Goal:</strong> {userRoadmap.goal} |
                 <strong> Domain:</strong> {userRoadmap.domain}
               </p>
             </div>
@@ -741,34 +740,34 @@ const Resources = () => {
             <p>Try adjusting your search or filters</p>
           </div>
         ) : (
-      <div className="resources-grid">
+          <div className="resources-grid">
             {filteredResources.map((resource, index) => {
               const IconComponent = typeIcons[resource.type] || FileText
               return (
-          <motion.div
-            key={resource.id}
-            className="resource-card"
-            style={{ '--resource-color': resource.color }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+                <motion.div
+                  key={resource.id}
+                  className="resource-card"
+                  style={{ '--resource-color': resource.color }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ y: -4, boxShadow: '0 8px 25px rgba(0,0,0,0.15)' }}
-          >
-            <div className="resource-icon">
+                >
+                  <div className="resource-icon">
                     <IconComponent size={24} />
-            </div>
-            <div className="resource-content">
-              <h3>{resource.title}</h3>
-              <p>{resource.description}</p>
-              <div className="resource-meta">
+                  </div>
+                  <div className="resource-content">
+                    <h3>{resource.title}</h3>
+                    <p>{resource.description}</p>
+                    <div className="resource-meta">
                       <div className="meta-tags">
-                        <span 
+                        <span
                           className="resource-type"
                           style={{ backgroundColor: resource.color + '20', color: resource.color }}
                         >
                           {resource.type}
                         </span>
-                        <span 
+                        <span
                           className="difficulty"
                           style={{ color: difficultyColors[resource.difficulty] }}
                         >
@@ -779,19 +778,19 @@ const Resources = () => {
                           {resource.duration}
                         </span>
                       </div>
-                      <button 
+                      <button
                         className="access-btn"
                         onClick={() => handleResourceClick(resource.url)}
                       >
-                  <ExternalLink size={16} />
-                  Access
-                </button>
-              </div>
-            </div>
-          </motion.div>
+                        <ExternalLink size={16} />
+                        Access
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
               )
             })}
-      </div>
+          </div>
         )}
       </motion.div>
     </div>

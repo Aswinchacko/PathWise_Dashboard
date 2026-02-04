@@ -11,15 +11,15 @@ const Layout = ({ children, sidebarCollapsed, setSidebarCollapsed }) => {
       {!isAdmin && (
         <Sidebar collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
       )}
-      <motion.main 
+      <motion.main
         className={`main-content ${isAdmin ? 'admin-main-content' : ''}`}
         initial={{ opacity: 0, x: 20 }}
-        animate={{ 
-          opacity: 1, 
+        animate={{
+          opacity: 1,
           x: 0,
-          marginLeft: isAdmin ? '0' : (sidebarCollapsed ? '100px' : '260px')
+          marginLeft: isAdmin ? '0' : (sidebarCollapsed ? '100px' : '300px')
         }}
-        transition={{ 
+        transition={{
           duration: 0.3,
           ease: "easeInOut"
         }}

@@ -76,7 +76,7 @@ const Community = () => {
 
     try {
       const comment = await discussionService.addComment(discussionId, newComment);
-      
+
       // Update discussions list
       const updatedDiscussions = discussions.map((d) =>
         d.id === discussionId
@@ -84,7 +84,7 @@ const Community = () => {
           : d
       );
       setDiscussions(updatedDiscussions);
-      
+
       // Update selected discussion in modal
       if (selectedDiscussion && selectedDiscussion.id === discussionId) {
         setSelectedDiscussion({
@@ -92,7 +92,7 @@ const Community = () => {
           comments: [...(selectedDiscussion.comments || []), comment]
         });
       }
-      
+
       setNewComment('');
       setSuccessMessage('Comment added successfully!');
       setShowSuccessModal(true);
@@ -107,13 +107,13 @@ const Community = () => {
   const handleLikeDiscussion = async (discussionId) => {
     try {
       const result = await discussionService.likeDiscussion(discussionId);
-      
+
       // Update discussions list
-      const updatedDiscussions = discussions.map(d => 
+      const updatedDiscussions = discussions.map(d =>
         d.id === discussionId ? { ...d, likes: result.likes } : d
       );
       setDiscussions(updatedDiscussions);
-      
+
       // Update selected discussion in modal
       if (selectedDiscussion && selectedDiscussion.id === discussionId) {
         setSelectedDiscussion({
@@ -174,15 +174,15 @@ const Community = () => {
         <header className="community-header">
           <div className="container">
             <div>
-              <h1>Community</h1>
-              <p>Ask questions and share knowledge</p>
+              <h1>Community Hub</h1>
+              <p>Join the conversation, share knowledge, and grow together.</p>
             </div>
             <div className="header-actions">
               <div className="search-bar">
                 <Search size={16} />
-                <input 
-                  type="text" 
-                  placeholder="Search discussions..." 
+                <input
+                  type="text"
+                  placeholder="Search discussions..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -201,7 +201,7 @@ const Community = () => {
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
           />
-          
+
           <div className="community-main">
             {loading ? (
               <div className="loading-state">

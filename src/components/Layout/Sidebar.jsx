@@ -45,8 +45,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   return (
     <motion.aside
       className={`sidebar ${collapsed ? 'collapsed' : ''}`}
-      initial={{ width: collapsed ? 80 : 240 }}
-      animate={{ width: collapsed ? 80 : 240 }}
+      initial={{ width: collapsed ? 80 : 280 }}
+      animate={{ width: collapsed ? 80 : 280 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
     >
       <div className="sidebar-header">

@@ -99,6 +99,23 @@ class RoadmapService {
     }
   }
 
+  /**
+   * AI-refine a single skill in a saved roadmap (Groq on roadmap API).
+   * @param {{ roadmapId: string, userId: string, stepIndex: number, skillIndex: number, instruction?: string, preset?: 'simplify'|'expand'|'diverge' }} params
+   */
+  async refineTopic(params) {
+    const { roadmapId, userId, stepIndex, skillIndex, instruction = '', preset = null } = params;
+    const response = await api.post('/api/roadmap/refine-topic', {
+      roadmap_id: roadmapId,
+      user_id: userId,
+      step_index: stepIndex,
+      skill_index: skillIndex,
+      instruction: instruction || '',
+      preset: preset || null,
+    });
+    return response.data;
+  }
+
   async getLatestRoadmap() {
     try {
       const response = await api.get('/api/roadmap/roadmaps/all', {

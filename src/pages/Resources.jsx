@@ -561,13 +561,39 @@ const Resources = () => {
                   Scrape by Topic
                 </h4>
                 <div className="form-group">
-                  <input
-                    type="text"
-                    placeholder="Enter topic (e.g., 'React hooks', 'Python machine learning')"
-                    value={scrapingQuery}
-                    onChange={(e) => setScrapingQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleScrapeQuery()}
-                  />
+                  <div className="search-input-wrapper" style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                    <input
+                      type="text"
+                      placeholder="Enter topic (e.g., 'React hooks', 'Python machine learning')"
+                      value={scrapingQuery}
+                      onChange={(e) => setScrapingQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleScrapeQuery()}
+                      style={{ flex: 1 }}
+                    />
+                    {userRoadmap && (
+                      <button
+                        className="use-roadmap-btn"
+                        onClick={() => {
+                          const skills = userRoadmap.steps?.flatMap(s => s.skills || []).slice(0, 2).join(' ') || '';
+                          setScrapingQuery(`${userRoadmap.goal} ${skills}`.trim());
+                        }}
+                        title={`Use roadmap goal: ${userRoadmap.goal}`}
+                        style={{
+                          padding: '0 12px',
+                          background: 'var(--primary-100)',
+                          color: 'var(--primary-600)',
+                          border: '1px solid var(--primary-200)',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        <Brain size={14} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} />
+                        Use Roadmap
+                      </button>
+                    )}
+                  </div>
                   <button
                     className="scrape-btn"
                     onClick={handleScrapeQuery}

@@ -640,6 +640,70 @@
   color: var(--text-muted);
 }
 
+.micro-learning-empty {
+  max-width: 32rem !important;
+  padding: 2rem 1.5rem !important;
+  text-align: center !important;
+}
+
+.micro-learning-empty .empty-state-icon {
+  color: var(--primary, #6366f1) !important;
+  margin-bottom: 1rem !important;
+  opacity: 0.9 !important;
+}
+
+.micro-learning-empty .empty-state-title {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: var(--text-primary, #0f172a) !important;
+  margin: 0 0 0.75rem 0 !important;
+}
+
+.micro-learning-empty .empty-state-copy {
+  font-size: 0.9375rem !important;
+  line-height: 1.55 !important;
+  margin: 0 0 1.25rem 0 !important;
+  color: var(--text-muted, #64748b) !important;
+}
+
+.micro-learning-empty .empty-state-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.75rem !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.micro-learning-empty .empty-state-cta {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.625rem 1.25rem !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  font-size: 0.9375rem !important;
+  text-decoration: none !important;
+  background: var(--primary, #6366f1) !important;
+  color: #fff !important;
+  transition: transform 0.15s ease, opacity 0.15s ease !important;
+}
+
+.micro-learning-empty .empty-state-secondary {
+  padding: 0.625rem 1.25rem !important;
+  border-radius: 0.5rem !important;
+  font-weight: 600 !important;
+  font-size: 0.9375rem !important;
+  cursor: pointer !important;
+  border: 2px solid var(--border-color, #e2e8f0) !important;
+  background: #fff !important;
+  color: var(--text-primary, #0f172a) !important;
+}
+
+.micro-learning-empty .empty-state-cta:hover {
+  opacity: 0.92 !important;
+  transform: translateY(-1px) !important;
+}
+
 .spinner {
   width: 40px;
   height: 40px;

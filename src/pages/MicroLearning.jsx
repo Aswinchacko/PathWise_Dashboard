@@ -17,8 +17,9 @@ import {
     BookOpen
 } from 'lucide-react';
 import Confetti from 'react-confetti';
-import microLearningService from '../services/microLearningService';
+import microLearningService, { roadmapStepsToMicroMilestones } from '../services/microLearningService';
 import authService from '../services/authService';
+import { Link } from 'react-router-dom';
 import roadmapService from '../services/roadmapService';
 import './MicroLearning.css';
 import ReactMarkdown from 'react-markdown';
@@ -267,21 +268,37 @@ const MicroLearning = () => {
     const [user, setUser] = useState(null);
     const [currentRoadmapId, setCurrentRoadmapId] = useState(null);
     const [loading, setLoading] = useState(true);
+    /** Why the empty state: service down, no id, stale id, or no skills in roadmap */
+    const [emptyHint, setEmptyHint] = useState(null);
 
     useEffect(() => {
+        let cancelled = false;
+
+        const loadStructureAndProgress = async (roadmapId) => {
+            const structureRes = await microLearningService.getRoadmapStructure(roadmapId);
+            const list = structureRes.milestones || [];
+            if (!list.length) return { milestones: [], progress: null };
+            const progressRes = await microLearningService.getUserProgress(roadmapId);
+            return { milestones: list, progress: progressRes };
+        };
+
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const currentUser = await authService.getCurrentUser();
+                setEmptyHint(null);
+                const currentUser = authService.getCurrentUser();
                 setUser(currentUser);
-                if (!currentUser) return setLoading(false);
+                if (!currentUser) {
+                    setLoading(false);
+                    return;
+                }
 
                 let roadmapId = null;
                 const savedGoal = localStorage.getItem('current_goal');
                 if (savedGoal) {
                     try {
                         roadmapId = JSON.parse(savedGoal).roadmapId;
-                    } catch (e) { }
+                    } catch (e) { /* ignore */ }
                 }
 
                 if (!roadmapId) {
@@ -289,29 +306,80 @@ const MicroLearning = () => {
                     if (latest) roadmapId = latest.id;
                 }
 
-                if (roadmapId) {
-                    setCurrentRoadmapId(roadmapId);
+                if (!roadmapId) {
+                    if (!cancelled) setEmptyHint('no_roadmap');
+                    return;
+                }
+
+                if (!cancelled) setCurrentRoadmapId(roadmapId);
+
+                try {
+                    const { milestones: ms, progress: pr } = await loadStructureAndProgress(roadmapId);
+                    if (!cancelled) {
+                        setMilestones(ms);
+                        setProgress(pr);
+                    }
+                    return;
+                } catch (err) {
+                    const status = err.response?.status;
+                    const isNoStructure =
+                        status === 404 ||
+                        (typeof err.response?.data?.detail === 'string' &&
+                            err.response.data.detail.includes('Roadmap structure'));
+
+                    if (!isNoStructure) {
+                        console.error('Micro-learning load failed:', err);
+                        if (!cancelled) setEmptyHint('service');
+                        return;
+                    }
+
+                    const { roadmaps = [] } = await roadmapService.getUserRoadmaps(currentUser.id);
+                    const roadmap = roadmaps.find(
+                        (r) => String(r.id) === String(roadmapId) || String(r._id) === String(roadmapId)
+                    );
+
+                    if (!roadmap) {
+                        if (!cancelled) setEmptyHint('stale_roadmap');
+                        return;
+                    }
+
+                    const payload = roadmapStepsToMicroMilestones(roadmap.steps);
+                    if (!payload.length) {
+                        if (!cancelled) setEmptyHint('no_steps');
+                        return;
+                    }
+
                     try {
-                        const [structureRes, progressRes] = await Promise.all([
-                            microLearningService.getRoadmapStructure(roadmapId),
-                            microLearningService.getUserProgress(roadmapId)
-                        ]);
-                        setMilestones(structureRes.milestones || []);
-                        setProgress(progressRes);
-                    } catch (err) {
-                        if (err.response && err.response.status === 404) {
-                            // Auto-initialize logic (omitted for brevity, assume similar to before or use fallback)
-                            console.log("Structure not found. Initialization needed.");
+                        await microLearningService.initializeStructure(roadmapId, payload);
+                    } catch (initErr) {
+                        console.error('initialize-structure failed:', initErr);
+                        if (!cancelled) setEmptyHint('service');
+                        return;
+                    }
+
+                    try {
+                        const { milestones: ms2, progress: pr2 } = await loadStructureAndProgress(roadmapId);
+                        if (!cancelled) {
+                            setMilestones(ms2);
+                            setProgress(pr2);
                         }
+                    } catch (e2) {
+                        console.error('Micro-learning reload after init failed:', e2);
+                        if (!cancelled) setEmptyHint('service');
                     }
                 }
             } catch (error) {
-                console.error("Failed to load data", error);
+                console.error('Failed to load micro-learning', error);
+                if (!cancelled) setEmptyHint('service');
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
+
         fetchData();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const getTopicStatus = (topicId) => {
@@ -380,7 +448,53 @@ const MicroLearning = () => {
     };
 
     if (loading) return <div className="loading-screen"><div className="spinner"></div><p>Loading your journey...</p></div>;
-    if (!progress || !milestones.length) return <div className="empty-state">Start a roadmap to see your learning path here.</div>;
+    if (!progress || !milestones.length) {
+        const hints = {
+            service: {
+                title: 'Micro-learning service unavailable',
+                body: 'The app could not reach the gamified service (set VITE_MICROLEARNING_API_URL in dashboard/.env, e.g. http://localhost:8007/api/v1/microlearning) or init failed. Start gamified_micro_learning, confirm MongoDB/GROQ env, restart `npm run dev`, then refresh.',
+            },
+            stale_roadmap: {
+                title: 'Roadmap ID not found for your account',
+                body: 'Your browser still points at an old roadmap. Open your Python (or other) roadmap on the Roadmap page once so it syncs, then return here.',
+            },
+            no_steps: {
+                title: 'Roadmap has no skills to turn into topics',
+                body: 'This saved roadmap has empty steps. Regenerate or pick another roadmap on the Roadmap page.',
+            },
+            no_roadmap: {
+                title: 'No roadmap selected',
+                body: 'Generate or open a roadmap first. Micro-Learning reuses that plan as bite-sized cards.',
+            },
+            default: {
+                title: 'No learning path here yet',
+                body: 'This page is the practice view (short lessons and streaks). If you already have a roadmap, we try to build micro-topics automatically when the gamified service is reachable (see VITE_MICROLEARNING_API_URL).',
+            },
+        };
+        const h = hints[emptyHint] || hints.default;
+
+        return (
+            <div className="empty-state micro-learning-empty">
+                <BookOpen size={40} className="empty-state-icon" aria-hidden />
+                <h2 className="empty-state-title">{h.title}</h2>
+                <p className="empty-state-copy">{h.body}</p>
+                <div className="empty-state-actions">
+                    <Link to="/roadmap" className="empty-state-cta">
+                        Go to Roadmap
+                    </Link>
+                    {emptyHint === 'service' && (
+                        <button
+                            type="button"
+                            className="empty-state-secondary"
+                            onClick={() => window.location.reload()}
+                        >
+                            Retry
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="micro-learning-page">

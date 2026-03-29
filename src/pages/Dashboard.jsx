@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { 
   MessageCircle, 
   Map, 
@@ -114,9 +115,9 @@ const Dashboard = () => {
               >
                 <RefreshCw size={20} className={loading ? 'spinning' : ''} />
               </button>
-              <a href="/settings" className="btn-icon" title="Settings">
+              <Link to="/settings" className="btn-icon" title="Settings">
                 <Settings size={20} />
-              </a>
+              </Link>
             </div>
           </div>
         </div>

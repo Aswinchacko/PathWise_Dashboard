@@ -132,6 +132,39 @@ function App() {
         </ProtectedRoute>
       } />
 
+      <Route path="/settings/*" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <Settings />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Tolerate trailing slash / prefixed path */}
+      <Route path="/settings/" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <Settings />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/dashboard/settings" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <Settings />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/dashboard/settings/*" element={
+        <ProtectedRoute>
+          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
+            <Settings />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
       <Route path="/resume-parser" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>

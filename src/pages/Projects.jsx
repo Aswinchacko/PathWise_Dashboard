@@ -1,7 +1,32 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Filter, Heart, Lightbulb, Star, Target, Loader2, X, CheckCircle } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Star, Target, Loader2, X, CheckCircle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
 import './Projects.css'
+
+const PROJECT_API = import.meta.env.VITE_PROJECT_RECOMMENDATION_URL || 'http://localhost:5003'
+const LOCAL_STARTED_KEY = 'pathwise.projectStartedIds'
+
+function readLocalStartedIds() {
+  try {
+    const raw = localStorage.getItem(LOCAL_STARTED_KEY)
+    if (!raw) return new Set()
+    const arr = JSON.parse(raw)
+    return new Set(Array.isArray(arr) ? arr : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function writeLocalStartedIds(ids) {
+  localStorage.setItem(LOCAL_STARTED_KEY, JSON.stringify([...ids]))
+}
+
+function applyStartedFromLocal(projects) {
+  const local = readLocalStartedIds()
+  return projects.map((p) => ({
+    ...p,
+    started: !!p.started || local.has(p.id),
+  }))
+}
 
 const Projects = () => {
   const [userAim, setUserAim] = useState('')
@@ -132,15 +157,36 @@ const Projects = () => {
     }
   ]
 
-  const [recommendations, setRecommendations] = useState(DEFAULT_PROJECTS)
-  const [allProjects, setAllProjects] = useState(DEFAULT_PROJECTS)
+  const [recommendations, setRecommendations] = useState(() => applyStartedFromLocal(DEFAULT_PROJECTS))
+  const [allProjects, setAllProjects] = useState(() => applyStartedFromLocal(DEFAULT_PROJECTS))
   const [loading, setLoading] = useState(false)
   const [recommendationMethod, setRecommendationMethod] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch(`${PROJECT_API}/api/projects`)
+        const data = await r.json()
+        if (cancelled || !data.success || !Array.isArray(data.projects) || data.projects.length === 0) {
+          return
+        }
+        const merged = applyStartedFromLocal(data.projects)
+        setAllProjects(merged)
+        setRecommendations(merged)
+      } catch {
+        /* offline / API down — keep defaults */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const projectCategories = [
     { id: 'all', label: 'All' },
-    { id: 'saved', label: 'Saved' },
+    { id: 'started', label: 'Started' },
     { id: 'beginner', label: 'Beginner' },
     { id: 'intermediate', label: 'Intermediate' },
     { id: 'advanced', label: 'Advanced' },
@@ -155,7 +201,7 @@ const Projects = () => {
 
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:5003/api/recommend', {
+      const response = await fetch(`${PROJECT_API}/api/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aim: userAim, limit: 6 })
@@ -163,8 +209,18 @@ const Projects = () => {
 
       const data = await response.json()
       if (data.success) {
-        setRecommendations(data.recommendations)
+        const local = readLocalStartedIds()
+        const merged = (data.recommendations || []).map((p) => ({
+          ...p,
+          started: !!p.started || local.has(p.id),
+        }))
+        setRecommendations(merged)
         setRecommendationMethod(data.method)
+        setAllProjects((prev) => {
+          const ids = new Set(merged.map((p) => p.id))
+          const rest = prev.filter((p) => !ids.has(p.id))
+          return [...merged, ...rest]
+        })
       }
     } catch (error) {
       console.error('Error getting recommendations:', error)
@@ -174,7 +230,8 @@ const Projects = () => {
   }
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
       getRecommendations()
     }
   }
@@ -185,8 +242,8 @@ const Projects = () => {
 
     if (category === 'all') {
       setRecommendations(allProjects)
-    } else if (category === 'saved') {
-      setRecommendations(allProjects.filter(p => p.saved).slice(0, 6))
+    } else if (category === 'started') {
+      setRecommendations(allProjects.filter((p) => p.started))
     } else if (['beginner', 'intermediate', 'advanced'].includes(category)) {
       const filtered = allProjects.filter(p =>
         p.difficulty.toLowerCase() === category
@@ -204,7 +261,7 @@ const Projects = () => {
     setLoadingStages(true)
     setProjectStages([])
     try {
-      const response = await fetch('http://localhost:5003/api/project-stages', {
+      const response = await fetch(`${PROJECT_API}/api/project-stages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -224,36 +281,102 @@ const Projects = () => {
   }
 
   const handleViewDetails = (project) => {
+    setProjectStages([])
     setSelectedProject(project)
-    fetchProjectStages(project)
+    void fetchProjectStages(project)
   }
+
+  const toggleStarted = useCallback(async (project, nextStarted) => {
+    const id = project.id
+    const started = typeof nextStarted === 'boolean' ? nextStarted : !project.started
+
+    const patchList = (list) => list.map((p) => (p.id === id ? { ...p, started } : p))
+
+    setAllProjects((prev) => patchList(prev))
+    setRecommendations((prev) => patchList(prev))
+    setSelectedProject((prev) => (prev?.id === id ? { ...prev, started } : prev))
+
+    try {
+      await fetch(`${PROJECT_API}/api/projects/${id}/started`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ started }),
+      })
+    } catch {
+      /* offline — localStorage still updated */
+    }
+
+    const locals = readLocalStartedIds()
+    if (started) locals.add(id)
+    else locals.delete(id)
+    writeLocalStartedIds(locals)
+  }, [])
+
+  const renderProjectCard = (project, index, animMs = 0) => (
+    <div
+      key={project.id}
+      className="project-card project-card--enter"
+      style={{ animationDelay: `${animMs + index * 35}ms` }}
+    >
+      <div className="project-image">
+        <div className="image-placeholder">
+          <Star size={24} />
+        </div>
+      </div>
+      <div className="project-content">
+        <h4>{project.title}</h4>
+        <p className="project-description">{project.description}</p>
+        {project.skills && (
+          <div className="project-tags">
+            {project.skills.slice(0, 3).map((skill, i) => (
+              <span key={i} className="skill-tag">
+                {skill}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="project-meta">
+          <span className="difficulty">{project.difficulty}</span>
+          <div className="rating">
+            <Star size={16} />
+            <span>{project.rating}</span>
+          </div>
+          {project.duration && <span className="duration">{project.duration}</span>}
+        </div>
+        <div className="project-actions">
+          <button type="button" className="btn btn-primary" onClick={() => handleViewDetails(project)}>
+            View details
+          </button>
+          <button
+            type="button"
+            className={`star-started-btn ${project.started ? 'star-started-btn--on' : ''}`}
+            title={project.started ? 'Started' : 'Mark as started'}
+            aria-label={project.started ? 'Started' : 'Mark as started'}
+            aria-pressed={project.started}
+            onClick={() => toggleStarted(project)}
+          >
+            <Star size={18} strokeWidth={2} fill={project.started ? 'currentColor' : 'none'} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="projects-page">
-      <motion.div
-        className="projects-header"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <header className="projects-header">
         <div className="header-content">
-          <h1>Project Recommendations</h1>
-          <p>AI-powered project suggestions based on your goals</p>
+          <span className="header-eyebrow">PathWise projects</span>
+          <div className="header-heading-row">
+            <h1>Project recommendations</h1>
+            <p className="header-desc">
+              Describe your goal and we&apos;ll surface build ideas, filters, and an implementation outline.
+            </p>
+          </div>
         </div>
-        <div className="header-actions">
-          <button className="theme-toggle-btn">
-            <Lightbulb size={20} />
-          </button>
-        </div>
-      </motion.div>
+      </header>
 
-      {/* AI Recommendation Input */}
-      <motion.div
-        className="aim-input-section"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
+      <div className="aim-input-section">
         <div className="aim-input-wrapper">
           <Target className="aim-icon" size={24} />
           <input
@@ -262,9 +385,10 @@ const Projects = () => {
             placeholder="What's your goal? (e.g., 'I want to become a full-stack developer')"
             value={userAim}
             onChange={(e) => setUserAim(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
           />
           <button
+            type="button"
             className="recommend-btn"
             onClick={getRecommendations}
             disabled={loading || !userAim.trim()}
@@ -284,16 +408,18 @@ const Projects = () => {
         </div>
         {recommendationMethod && (
           <p className="recommendation-badge">
-            {recommendationMethod === 'ai-powered' ? '🤖 AI-Powered' : '🎯 Smart Match'}
+            <span className="recommendation-badge__dot" aria-hidden />
+            {recommendationMethod === 'ai-powered' ? 'AI-powered match' : 'Smart match'}
           </p>
         )}
-      </motion.div>
+      </div>
 
       {/* Categories Filter */}
       <div className="filter-section">
         <div className="filter-tabs">
           {projectCategories.map((category) => (
             <button
+              type="button"
               key={category.id}
               className={`filter-tab ${activeCategory === category.id ? 'active' : ''}`}
               onClick={() => filterProjects(category.id)}
@@ -311,155 +437,56 @@ const Projects = () => {
             <p>AI is generating custom projects for you...</p>
           </div>
         ) : recommendations.length === 0 ? (
-          <motion.div
-            className="empty-state"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <div className="empty-state">
             <div className="empty-content">
               <Target size={64} className="empty-icon" />
-              <h3>No Projects Yet</h3>
+              <h3>No projects yet</h3>
               <p>Enter your career goal above to get AI-generated project recommendations tailored just for you!</p>
             </div>
-          </motion.div>
+          </div>
         ) : (
           <>
-            <motion.div
-              className="recommendation-group unlocked"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h3>Top Recommended Projects</h3>
+            <div className="recommendation-group unlocked">
+              <h3>Top picks</h3>
               <div className="project-grid">
-                {recommendations.slice(0, 3).map((project, index) => (
-                  <motion.div
-                    key={project.id}
-                    className="project-card"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 + index * 0.1 }}
-                  >
-                    <div className="project-image">
-                      <div className="image-placeholder">
-                        <Star size={24} />
-                      </div>
-                    </div>
-                    <div className="project-content">
-                      <h4>{project.title}</h4>
-                      <p>{project.description}</p>
-                      {project.skills && (
-                        <div className="project-tags">
-                          {project.skills.slice(0, 3).map((skill, i) => (
-                            <span key={i} className="skill-tag">{skill}</span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="project-meta">
-                        <span className="difficulty">{project.difficulty}</span>
-                        <div className="rating">
-                          <Star size={16} />
-                          <span>{project.rating}</span>
-                        </div>
-                        {project.duration && (
-                          <span className="duration">{project.duration}</span>
-                        )}
-                      </div>
-                      <div className="project-actions">
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => handleViewDetails(project)}
-                        >
-                          View Details
-                        </button>
-                        <button className="like-btn">
-                          <Heart size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+                {recommendations.slice(0, 3).map((project, index) => renderProjectCard(project, index, 0))}
               </div>
-            </motion.div>
+            </div>
 
             {recommendations.length > 3 && (
-              <motion.div
-                className="recommendation-group"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <h3>Additional Projects</h3>
+              <div className="recommendation-group">
+                <h3>More projects</h3>
                 <div className="project-grid">
-                  {recommendations.slice(3).map((project, index) => (
-                    <motion.div
-                      key={project.id}
-                      className="project-card"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.5 + index * 0.1 }}
-                    >
-                      <div className="project-image">
-                        <div className="image-placeholder">
-                          <Star size={24} />
-                        </div>
-                      </div>
-                      <div className="project-content">
-                        <h4>{project.title}</h4>
-                        <p>{project.description}</p>
-                        {project.skills && (
-                          <div className="project-tags">
-                            {project.skills.slice(0, 3).map((skill, i) => (
-                              <span key={i} className="skill-tag">{skill}</span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="project-meta">
-                          <span className="difficulty">{project.difficulty}</span>
-                          <div className="rating">
-                            <Star size={16} />
-                            <span>{project.rating}</span>
-                          </div>
-                          {project.duration && (
-                            <span className="duration">{project.duration}</span>
-                          )}
-                        </div>
-                        <div className="project-actions">
-                          <button
-                            className="btn btn-primary"
-                            onClick={() => handleViewDetails(project)}
-                          >
-                            View Details
-                          </button>
-                          <button className="like-btn">
-                            <Heart size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {recommendations.slice(3).map((project, index) => renderProjectCard(project, index, 80))}
                 </div>
-              </motion.div>
+              </div>
             )}
           </>
         )}
       </div>
 
-      <AnimatePresence>
-        {selectedProject && (
-          <div className="modal-overlay" onClick={() => setSelectedProject(null)}>
-            <motion.div
-              className="modal-content project-modal"
-              initial={{ opacity: 0, y: 100, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 100, scale: 0.9 }}
-              onClick={e => e.stopPropagation()}
-            >
+      {selectedProject && (
+        <div
+          className="modal-overlay projects-modal-overlay"
+          role="presentation"
+          onClick={() => setSelectedProject(null)}
+        >
+          <div
+            className="modal-content project-modal projects-modal-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
               <div className="modal-header">
-                <h2>{selectedProject.title}</h2>
-                <button className="close-btn" onClick={() => setSelectedProject(null)}>
-                  <X size={24} />
+                <h2 id="project-modal-title">{selectedProject.title}</h2>
+                <button
+                  type="button"
+                  className="close-btn"
+                  onClick={() => setSelectedProject(null)}
+                  aria-label="Close"
+                >
+                  <X size={22} strokeWidth={2} />
                 </button>
               </div>
 
@@ -526,6 +553,7 @@ const Projects = () => {
                     <div className="no-stages">
                       <p>Could not generate roadmap.</p>
                       <button
+                        type="button"
                         className="retry-btn"
                         onClick={() => fetchProjectStages(selectedProject)}
                       >
@@ -537,17 +565,23 @@ const Projects = () => {
               </div>
 
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setSelectedProject(null)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setSelectedProject(null)}>
                   Close
                 </button>
-                <button className="btn btn-primary start-project-btn">
-                  Start Project
+                <button
+                  type="button"
+                  className="btn btn-primary start-project-btn"
+                  onClick={() => {
+                    void toggleStarted(selectedProject, true)
+                    setSelectedProject(null)
+                  }}
+                >
+                  Start project
                 </button>
               </div>
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </div>
   )
 }

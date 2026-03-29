@@ -390,11 +390,19 @@ const Settings = () => {
     console.log('handleLogout called') // Debug log
     setIsLoggingOut(true)
 
-    // Clear authentication data immediately
-    authService.logout()
+    try {
+      // Clear authentication data immediately
+      authService.logout()
 
-    // Use navigate for smoother transition within SPA
-    navigate('/login')
+      // Force a full page reload to ensure all states (like contexts) are completely cleared
+      // This is more reliable than navigate() for logout as it prevents stale state
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Fallback for safety
+      navigate('/login')
+      setIsLoggingOut(false)
+    }
   }
 
   const handleProfileSave = async () => {

@@ -1,7 +1,19 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Search, MapPin, DollarSign, Target, Sparkles, ExternalLink, TrendingUp, Lock } from 'lucide-react'
-import { searchJobs, getUserRoadmap } from '../services/jobSearchService'
+import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Search,
+  MapPin,
+  DollarSign,
+  Sparkles,
+  ExternalLink,
+  RefreshCw,
+  Target,
+  Briefcase,
+  ArrowRight,
+  Layers,
+} from 'lucide-react'
+import { searchJobs, getRoadmapJobContext, extractTechnicalRoleFromAim } from '../services/jobSearchService'
 import './Jobs.css'
 
 const Jobs = () => {
@@ -9,73 +21,46 @@ const Jobs = () => {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState(null)
+  const [roadmapCtx, setRoadmapCtx] = useState(() => getRoadmapJobContext())
   const [jobStats, setJobStats] = useState({
     total: 0,
     sources: [],
-    aiMatched: false
+    aiMatched: false,
   })
 
-  // Fetch jobs on component mount
-  useEffect(() => {
-    handleFetchUserJobs()
+  const refreshRoadmapContext = useCallback(() => {
+    setRoadmapCtx(getRoadmapJobContext())
   }, [])
 
-  // Auto-refresh when roadmap changes
-  useEffect(() => {
-    const handleRoadmapChange = (e) => {
-      if (e.key === 'selectedRoadmap' && e.newValue !== e.oldValue) {
-        console.log('🔄 Roadmap changed, refreshing jobs...')
-        handleFetchUserJobs()
-      }
-    }
-
-    // Listen for localStorage changes (from other tabs)
-    window.addEventListener('storage', handleRoadmapChange)
-
-    // Listen for custom event (same tab)
-    const customHandler = () => {
-      console.log('🔄 Roadmap changed (same tab), refreshing jobs...')
-      handleFetchUserJobs()
-    }
-    window.addEventListener('roadmapChanged', customHandler)
-
-    return () => {
-      window.removeEventListener('storage', handleRoadmapChange)
-      window.removeEventListener('roadmapChanged', customHandler)
-    }
-  }, [])
-
-  /**
-   * Fetch jobs based on user's roadmap
-   */
-  const handleFetchUserJobs = async () => {
+  const handleFetchUserJobs = useCallback(async () => {
     setLoading(true)
     setError(null)
-    
+    refreshRoadmapContext()
+    const ctx = getRoadmapJobContext()
+
     try {
-      const roadmap = getUserRoadmap()
-      const query = roadmap || 'software developer'
-      
-      const result = await searchJobs(query)
-      
+      const result = await searchJobs(ctx.searchQuery, {
+        goal: ctx.goal,
+        domain: ctx.domain,
+        goalFull: ctx.goalFull,
+      })
+
       setJobs(result.jobs)
       setJobStats({
         total: result.total,
         sources: result.sources,
-        aiMatched: result.aiMatched
+        aiMatched: result.aiMatched,
       })
+      setSearchQuery('')
     } catch (err) {
-      console.error('❌ Error fetching jobs:', err)
-      setError('Failed to load jobs. Check console for API errors.')
+      console.error('Error fetching jobs:', err)
+      setError('Failed to load jobs. Check the console for API errors (Serper / Groq).')
     } finally {
       setLoading(false)
     }
-  }
+  }, [refreshRoadmapContext])
 
-  /**
-   * Search jobs based on user query
-   */
-  const handleSearchJobs = async () => {
+  const handleSearchJobs = useCallback(async () => {
     if (!searchQuery.trim()) {
       handleFetchUserJobs()
       return
@@ -83,247 +68,267 @@ const Jobs = () => {
 
     setLoading(true)
     setError(null)
-    
+
     try {
-      const result = await searchJobs(searchQuery)
-      
+      const q = searchQuery.trim()
+      const serperQ = extractTechnicalRoleFromAim(q) || q
+      const result = await searchJobs(serperQ, {
+        goal: serperQ,
+        domain: roadmapCtx.domain || '',
+        goalFull: q,
+      })
+
       setJobs(result.jobs)
       setJobStats({
         total: result.total,
         sources: result.sources,
-        aiMatched: result.aiMatched
+        aiMatched: result.aiMatched,
       })
     } catch (err) {
-      console.error('❌ Error searching jobs:', err)
+      console.error('Error searching jobs:', err)
       setError('Search failed. Please try again.')
     } finally {
       setLoading(false)
     }
+  }, [searchQuery, roadmapCtx.domain, handleFetchUserJobs])
+
+  useEffect(() => {
+    handleFetchUserJobs()
+  }, [handleFetchUserJobs])
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'selectedRoadmap' || e.key === 'current_goal') {
+        handleFetchUserJobs()
+      }
+    }
+    const onRoadmapChanged = () => handleFetchUserJobs()
+
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('roadmapChanged', onRoadmapChanged)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('roadmapChanged', onRoadmapChanged)
+    }
+  }, [handleFetchUserJobs])
+
+  const onSearchKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearchJobs()
   }
 
-  /**
-   * Handle Enter key press in search input
-   */
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearchJobs()
-    }
-  }
+  const ctx = roadmapCtx
 
   return (
-    <div className="jobs-page">
-      <motion.div 
-        className="jobs-header"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="header-content">
-          <h1>Career Opportunities</h1>
-          <p>Discover real-time job opportunities powered by AI and multiple job platforms</p>
-          {jobStats.aiMatched && (
-            <div className="ai-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', fontSize: '13px', color: '#8b5cf6' }}>
-              <Sparkles size={16} />
-              <span>Browser-Based AI Search</span>
-            </div>
-          )}
-        </div>
-        <button className="theme-toggle-btn" onClick={handleFetchUserJobs} title="Refresh Jobs">
-          <TrendingUp size={20} />
-        </button>
-      </motion.div>
+    <div className="jobs-page jobs-page--modern">
+      <header className="jobs-hero">
+        <div className="jobs-hero__copy">
+          <p className="jobs-hero__eyebrow">
+            <Briefcase size={14} strokeWidth={2} aria-hidden />
+            Job discovery
+          </p>
+          <h1 className="jobs-hero__title">Roles matched to your path</h1>
+          <p className="jobs-hero__subtitle">
+            Live search across LinkedIn, Indeed, and Glassdoor, filtered toward your active roadmap goal.
+          </p>
 
-      <div className="search-section">
-        <div className="search-bar" style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
-            <input
-              type="text"
-              placeholder="Search jobs (e.g., 'React Developer', 'Data Scientist')..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '12px 12px 12px 45px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                fontSize: '14px'
-              }}
-            />
+          <div className="jobs-goal-chip">
+            <Target size={16} strokeWidth={2} className="jobs-goal-chip__icon" aria-hidden />
+            <div className="jobs-goal-chip__text">
+              <span className="jobs-goal-chip__label">Current focus</span>
+              <span className="jobs-goal-chip__value">
+                {ctx.hasRoadmap ? ctx.goal : 'No roadmap selected'}
+              </span>
+              {ctx.hasRoadmap && ctx.goalFull && ctx.goalFull !== ctx.goal ? (
+                <span className="jobs-goal-chip__aim-full" title={ctx.goalFull}>
+                  Job search uses the role above; your full aim: {ctx.goalFull}
+                </span>
+              ) : null}
+              {ctx.domain ? (
+                <span className="jobs-goal-chip__domain">
+                  <Layers size={12} strokeWidth={2} aria-hidden />
+                  {ctx.domain}
+                </span>
+              ) : null}
+            </div>
+            {!ctx.hasRoadmap ? (
+              <Link to="/roadmap" className="jobs-goal-chip__cta">
+                Set goal
+                <ArrowRight size={14} strokeWidth={2} />
+              </Link>
+            ) : null}
           </div>
-          <button 
-            onClick={handleSearchJobs} 
-            disabled={loading}
-            style={{
-              padding: '12px 24px',
-              background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: '500',
-              whiteSpace: 'nowrap'
+        </div>
+
+        <div className="jobs-hero__actions">
+          <button
+            type="button"
+            className="jobs-btn jobs-btn--ghost"
+            onClick={() => {
+              refreshRoadmapContext()
+              handleFetchUserJobs()
             }}
+            disabled={loading}
+            title="Refresh from roadmap"
           >
-            {loading ? 'Searching...' : 'Search'}
+            <RefreshCw size={18} strokeWidth={2} className={loading ? 'jobs-icon-spin' : ''} />
+            Sync roadmap
+          </button>
+          {jobStats.aiMatched ? (
+            <div className="jobs-ai-pill">
+              <Sparkles size={14} strokeWidth={2} />
+              AI-ranked for your goal
+            </div>
+          ) : null}
+        </div>
+      </header>
+
+      <section className="jobs-toolbar" aria-label="Search jobs">
+        <div className="jobs-search">
+          <Search size={18} strokeWidth={2} className="jobs-search__icon" aria-hidden />
+          <input
+            type="search"
+            className="jobs-search__input"
+            placeholder="Refine search (e.g. Staff Engineer, MLOps)…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={onSearchKeyDown}
+            disabled={loading}
+            aria-label="Job search"
+          />
+          <button
+            type="button"
+            className="jobs-btn jobs-btn--primary"
+            onClick={handleSearchJobs}
+            disabled={loading}
+          >
+            {loading ? 'Searching…' : 'Search'}
           </button>
         </div>
-        
-        {jobStats.total > 0 && (
-          <div style={{ marginTop: '12px', fontSize: '13px', color: '#666', display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-            <span>✅ Found {jobStats.total} jobs</span>
-            {jobStats.sources.length > 0 && (
-              <span>📊 Sources: {jobStats.sources.join(', ')}</span>
-            )}
-          </div>
-        )}
-      </div>
+        {jobStats.total > 0 ? (
+          <p className="jobs-toolbar__meta">
+            <span>{jobStats.total} openings</span>
+            {jobStats.sources?.length ? (
+              <span className="jobs-toolbar__sources">{jobStats.sources.join(' · ')}</span>
+            ) : null}
+          </p>
+        ) : null}
+      </section>
 
-      {error && (
-        <div style={{ 
-          padding: '16px', 
-          background: '#fee', 
-          border: '1px solid #fcc',
-          borderRadius: '8px',
-          color: '#c33',
-          marginBottom: '20px'
-        }}>
-          ⚠️ {error}
-          <div style={{ marginTop: '8px', fontSize: '13px' }}>
-            Check browser console for API errors (Serper or Groq API)
-          </div>
-        </div>
-      )}
-
-      {loading && !jobs.length && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div className="spinner" style={{ 
-            width: '40px', 
-            height: '40px', 
-            border: '4px solid #f3f3f3',
-            borderTop: '4px solid #667eea',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 20px'
-          }}></div>
-          <p style={{ color: '#666' }}>Finding the best job opportunities for you...</p>
-        </div>
-      )}
-
-      <div className="jobs-grid">
-        {jobs.map((job, index) => (
+      <AnimatePresence>
+        {error ? (
           <motion.div
-            key={job.id}
-            className={`job-card ${job.unlocked ? 'unlocked' : 'locked'}`}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.05 }}
+            className="jobs-alert"
+            role="alert"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
           >
-            <div className="job-header">
-              <div className="job-meta">
-                <span className="job-date">{job.date}</span>
-                <div className="company-logo">
-                  <span>{job.logo}</span>
-                </div>
-              </div>
-              <div className="job-info">
-                <h3>{job.title}</h3>
-                <p className="company-name">{job.company}</p>
-                {job.source && (
-                  <span style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'block' }}>
-                    via {job.source}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="job-details">
-              {job.requirements && job.requirements.length > 0 && (
-                <div className="job-tags">
-                  {job.requirements.slice(0, 3).map((skill, idx) => (
-                    <span key={idx} className="tag">{skill}</span>
-                  ))}
-                </div>
-              )}
-              <div className="job-location-salary">
-                <div className="location">
-                  <MapPin size={16} />
-                  <span>{job.location}</span>
-                  {job.remote && <span style={{ marginLeft: '6px', fontSize: '11px', color: '#10b981' }}>• Remote</span>}
-                </div>
-                <div className="salary">
-                  <DollarSign size={16} />
-                  <span>{job.salary}</span>
-                </div>
-              </div>
-              
-              {job.matchScore && (
-                <div style={{ 
-                  marginTop: '12px', 
-                  padding: '8px', 
-                  background: job.matchScore > 80 ? '#e0f2fe' : job.matchScore > 60 ? '#fef3c7' : '#fee2e2',
-                  borderRadius: '6px',
-                  fontSize: '12px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '600', marginBottom: '4px' }}>
-                    <TrendingUp size={14} />
-                    <span>Match Score: {job.matchScore}%</span>
-                  </div>
-                  {job.matchReason && (
-                    <div style={{ color: '#666', fontSize: '11px' }}>
-                      {job.matchReason}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="job-actions">
-              {job.url && (
-                <a 
-                  href={job.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="btn btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
-                >
-                  Apply Now <ExternalLink size={14} />
-                </a>
-              )}
-            </div>
-
-            {!job.unlocked && (
-              <div className="locked-overlay">
-                <Lock size={32} />
-                <p style={{ marginTop: '10px', fontSize: '13px' }}>Upgrade to unlock</p>
-              </div>
-            )}
+            {error}
+            <span className="jobs-alert__hint">Open DevTools → Console for Serper / Groq details.</span>
           </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {loading && jobs.length === 0 ? (
+        <div className="jobs-skeleton-grid" aria-busy="true" aria-label="Loading jobs">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="jobs-skeleton-card" />
+          ))}
+        </div>
+      ) : null}
+
+      {loading && jobs.length > 0 ? <div className="jobs-loading-bar" /> : null}
+
+      <div className={`jobs-grid jobs-grid--modern ${loading && jobs.length > 0 ? 'jobs-grid--dim' : ''}`}>
+        {jobs.map((job, index) => (
+          <motion.article
+            key={job.id}
+            className="job-card job-card--modern"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.04, duration: 0.35 }}
+          >
+            <div className="job-card__top">
+              <div className="job-card__logo" aria-hidden>
+                {job.logo}
+              </div>
+              <div className="job-card__headline">
+                <time className="job-card__time">{job.date}</time>
+                <h2 className="job-card__title">{job.title}</h2>
+                <p className="job-card__company">{job.company}</p>
+                {job.source ? <span className="job-card__source">via {job.source}</span> : null}
+              </div>
+            </div>
+
+            {job.requirements?.length ? (
+              <ul className="job-card__tags">
+                {job.requirements.slice(0, 4).map((skill, idx) => (
+                  <li key={idx}>{skill}</li>
+                ))}
+              </ul>
+            ) : null}
+
+            <div className="job-card__meta-row">
+              <span className="job-card__meta">
+                <MapPin size={15} strokeWidth={2} aria-hidden />
+                {job.location}
+                {job.remote ? <span className="job-card__remote">Remote</span> : null}
+              </span>
+              <span className="job-card__meta job-card__meta--pay">
+                <DollarSign size={15} strokeWidth={2} aria-hidden />
+                {job.salary}
+              </span>
+            </div>
+
+            {job.matchScore ? (
+              <div
+                className={`job-card__match job-card__match--${
+                  job.matchScore > 80 ? 'high' : job.matchScore > 60 ? 'mid' : 'low'
+                }`}
+              >
+                Match {job.matchScore}%
+                {job.matchReason ? <span className="job-card__match-reason">{job.matchReason}</span> : null}
+              </div>
+            ) : null}
+
+            {job.url ? (
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="jobs-btn jobs-btn--outline job-card__apply"
+              >
+                Apply
+                <ExternalLink size={15} strokeWidth={2} />
+              </a>
+            ) : null}
+          </motion.article>
         ))}
       </div>
 
-      {!loading && jobs.length === 0 && !error && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#888' }}>
-          <Target size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
-          <p>No jobs found. Try a different search term or check back later.</p>
-          <button 
-            onClick={handleFetchUserJobs}
-            style={{
-              marginTop: '20px',
-              padding: '10px 20px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-            Load Recommended Jobs
-          </button>
+      {!loading && jobs.length === 0 && !error ? (
+        <div className="jobs-empty">
+          <Target size={40} strokeWidth={1.5} className="jobs-empty__icon" aria-hidden />
+          <h2 className="jobs-empty__title">No listings yet</h2>
+          <p className="jobs-empty__text">
+            {ctx.hasRoadmap
+              ? 'Try syncing again or broaden your search. Results depend on what Google returns for your goal.'
+              : 'Generate or load a roadmap so we can search for roles that fit your goal.'}
+          </p>
+          <div className="jobs-empty__actions">
+            {ctx.hasRoadmap ? (
+              <button type="button" className="jobs-btn jobs-btn--primary" onClick={handleFetchUserJobs}>
+                Search for {ctx.goal}
+              </button>
+            ) : (
+              <Link to="/roadmap" className="jobs-btn jobs-btn--primary">
+                Open roadmap
+                <ArrowRight size={16} strokeWidth={2} />
+              </Link>
+            )}
+          </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

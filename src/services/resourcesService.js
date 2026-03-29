@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const RESOURCES_API_URL = import.meta.env.VITE_RESOURCES_API_URL || 'http://localhost:8006';
+const RESOURCES_API_URL = import.meta.env.VITE_RESOURCES_API_URL || 'http://localhost:8010';
 
 // Create axios instance for main API
 const api = axios.create({
@@ -17,7 +17,7 @@ const resourcesApi = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30 seconds timeout for scraping operations
+  timeout: 60000, // 60 seconds timeout for scraping operations
 });
 
 class ResourcesService {
@@ -688,7 +688,7 @@ class ResourcesService {
   // Get resources for a specific skill
   getResourcesForSkill(skill) {
     const normalizedSkill = this.normalizeSkillName(skill);
-    
+
     // Direct match
     if (this.resourceDatabase[normalizedSkill]) {
       return this.resourceDatabase[normalizedSkill];
@@ -697,8 +697,8 @@ class ResourcesService {
     // Partial match
     const partialMatches = [];
     for (const [key, resources] of Object.entries(this.resourceDatabase)) {
-      if (key.toLowerCase().includes(normalizedSkill.toLowerCase()) || 
-          normalizedSkill.toLowerCase().includes(key.toLowerCase())) {
+      if (key.toLowerCase().includes(normalizedSkill.toLowerCase()) ||
+        normalizedSkill.toLowerCase().includes(key.toLowerCase())) {
         partialMatches.push(...resources);
       }
     }
@@ -712,7 +712,7 @@ class ResourcesService {
       // Get skills for the domain
       const response = await api.get(`/api/roadmap/resources/domain/${encodeURIComponent(domain)}`);
       const skills = response.data.skills || [];
-      
+
       const allResources = [];
 
       // Get resources for each skill
@@ -727,7 +727,7 @@ class ResourcesService {
       console.error('Error fetching domain resources:', error);
       // Return filtered local resources as fallback
       const allLocalResources = this.getAllResources();
-      return allLocalResources.filter(resource => 
+      return allLocalResources.filter(resource =>
         resource.domain && resource.domain.toLowerCase().includes(domain.toLowerCase())
       );
     }
@@ -756,11 +756,11 @@ class ResourcesService {
   // Search resources
   searchResources(query, domain = null) {
     let resources;
-    
+
     if (domain) {
       // For domain-specific search, filter local resources by domain
       const allResources = this.getAllResources();
-      resources = allResources.filter(resource => 
+      resources = allResources.filter(resource =>
         resource.domain && resource.domain.toLowerCase().includes(domain.toLowerCase())
       );
     } else {
@@ -770,7 +770,7 @@ class ResourcesService {
     if (!query) return resources;
 
     const searchTerm = query.toLowerCase();
-    return resources.filter(resource => 
+    return resources.filter(resource =>
       resource.title.toLowerCase().includes(searchTerm) ||
       resource.description.toLowerCase().includes(searchTerm) ||
       resource.type.toLowerCase().includes(searchTerm)
@@ -780,7 +780,7 @@ class ResourcesService {
   // Get resources by type
   getResourcesByType(type) {
     const allResources = this.getAllResources();
-    return allResources.filter(resource => 
+    return allResources.filter(resource =>
       resource.type.toLowerCase() === type.toLowerCase()
     );
   }
@@ -788,7 +788,7 @@ class ResourcesService {
   // Get resources by difficulty
   getResourcesByDifficulty(difficulty) {
     const allResources = this.getAllResources();
-    return allResources.filter(resource => 
+    return allResources.filter(resource =>
       resource.difficulty.toLowerCase() === difficulty.toLowerCase()
     );
   }
@@ -838,10 +838,10 @@ class ResourcesService {
     allResources.forEach(resource => {
       // Count by type
       stats.byType[resource.type] = (stats.byType[resource.type] || 0) + 1;
-      
+
       // Count by difficulty
       stats.byDifficulty[resource.difficulty] = (stats.byDifficulty[resource.difficulty] || 0) + 1;
-      
+
       // Count by duration
       const duration = resource.duration.toLowerCase();
       if (duration.includes('min') || duration.includes('under')) {
@@ -964,7 +964,7 @@ class ResourcesService {
   async getScrapedResources(filters = {}) {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters.domain) params.append('domain', filters.domain);
       if (filters.type) params.append('type', filters.type);
       if (filters.difficulty) params.append('difficulty', filters.difficulty);
@@ -973,11 +973,11 @@ class ResourcesService {
       if (filters.offset) params.append('offset', filters.offset);
 
       const response = await resourcesApi.get(`/api/resources?${params}`);
-      
+
       if (response.data.success !== false) {
         return response.data.resources || response.data || [];
       }
-      
+
       return [];
     } catch (error) {
       console.error('Error fetching scraped resources:', error);
@@ -990,18 +990,18 @@ class ResourcesService {
     try {
       const params = new URLSearchParams();
       params.append('q', query);
-      
+
       if (filters.domain) params.append('domain', filters.domain);
       if (filters.type) params.append('type', filters.type);
       if (filters.difficulty) params.append('difficulty', filters.difficulty);
       if (filters.limit) params.append('limit', filters.limit || 50);
 
       const response = await resourcesApi.get(`/api/resources/search?${params}`);
-      
+
       if (response.data.success !== false) {
         return response.data.resources || response.data || [];
       }
-      
+
       return [];
     } catch (error) {
       console.error('Error searching scraped resources:', error);
@@ -1013,11 +1013,11 @@ class ResourcesService {
   async getScrapedResourcesByDomain(domain) {
     try {
       const response = await resourcesApi.get(`/api/resources/domain/${encodeURIComponent(domain)}`);
-      
+
       if (response.data.success !== false) {
         return response.data.resources || response.data || [];
       }
-      
+
       return [];
     } catch (error) {
       console.error('Error fetching domain resources:', error);
@@ -1028,18 +1028,18 @@ class ResourcesService {
   // Combined method to get all resources (local + scraped)
   async getAllResourcesCombined(includeScraped = true) {
     const localResources = this.getAllResources();
-    
+
     if (!includeScraped) {
       return localResources;
     }
 
     try {
       const scrapedResources = await this.getScrapedResources({ limit: 1000 });
-      
+
       // Combine and deduplicate
       const combinedResources = [...localResources];
       const seenUrls = new Set(localResources.map(r => r.url));
-      
+
       scrapedResources.forEach(resource => {
         if (!seenUrls.has(resource.url)) {
           combinedResources.push({
@@ -1061,7 +1061,7 @@ class ResourcesService {
           seenUrls.add(resource.url);
         }
       });
-      
+
       return combinedResources;
     } catch (error) {
       console.error('Error combining resources:', error);
@@ -1082,7 +1082,7 @@ class ResourcesService {
       'Video': 'var(--pink-500)',
       'Article': 'var(--green-500)'
     };
-    
+
     return colors[type] || 'var(--gray-500)';
   }
 
@@ -1093,11 +1093,11 @@ class ResourcesService {
     try {
       const response = await api.get(`/api/roadmap/roadmaps/user/${userId}`);
       const roadmaps = response.data.roadmaps || [];
-      
+
       if (roadmaps.length === 0) {
         return null;
       }
-      
+
       // Return the most recently updated roadmap
       return roadmaps[0];
     } catch (error) {
@@ -1119,22 +1119,22 @@ class ResourcesService {
       const goal = roadmap.goal;
       const domain = roadmap.domain;
       const skills = roadmap.steps?.flatMap(step => step.skills || []) || [];
-      
+
       // Create search query based on roadmap
       const searchQuery = this.buildSearchQuery(goal, domain, skills);
-      
+
       console.log('🔍 AI Resource Search:', { goal, domain, skills: skills.slice(0, 5), searchQuery });
 
       // Search using Serper API
       const searchResults = await this.searchWithSerper(searchQuery, maxResults);
-      
+
       if (!searchResults || searchResults.length === 0) {
         throw new Error('No search results found');
       }
 
       // Use Groq AI to extract and structure resources
       const aiResources = await this.extractResourcesWithGroq(searchResults, goal, domain, skills);
-      
+
       return {
         success: true,
         data: {
@@ -1164,14 +1164,14 @@ class ResourcesService {
   buildSearchQuery(goal, domain, skills) {
     // Take top 3-5 most relevant skills
     const topSkills = skills.slice(0, 5);
-    
+
     // Create a comprehensive search query
     const skillQuery = topSkills.join(' OR ');
     const domainQuery = domain.toLowerCase();
-    
+
     // Build query for learning resources
     const query = `${goal} ${domainQuery} (${skillQuery}) tutorial course guide documentation learn -job -career -salary -interview`;
-    
+
     return query;
   }
 
@@ -1208,7 +1208,7 @@ class ResourcesService {
   async extractResourcesWithGroq(searchResults, goal, domain, skills) {
     try {
       const prompt = this.createResourceExtractionPrompt(searchResults, goal, domain, skills);
-      
+
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -1238,16 +1238,16 @@ class ResourcesService {
 
       const data = await response.json();
       const content = data.choices[0]?.message?.content || '[]';
-      
+
       // Clean up response - remove markdown code blocks if present
       const cleanContent = content
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim();
-      
+
       const extractedResources = JSON.parse(cleanContent);
       console.log('🤖 Groq AI extracted resources:', extractedResources);
-      
+
       return extractedResources;
     } catch (error) {
       console.error('Groq API error:', error);
@@ -1259,7 +1259,7 @@ class ResourcesService {
   // Create extraction prompt for Groq AI
   createResourceExtractionPrompt(searchResults, goal, domain, skills) {
     const topSkills = skills.slice(0, 5);
-    
+
     return `Extract learning resources from these search results for someone learning "${goal}" in "${domain}".
 
 User's Learning Goal: ${goal}
@@ -1267,11 +1267,11 @@ Domain: ${domain}
 Key Skills: ${topSkills.join(', ')}
 
 Search Results:
-${searchResults.slice(0, 15).map((result, index) => 
-  `${index + 1}. ${result.title}
+${searchResults.slice(0, 15).map((result, index) =>
+      `${index + 1}. ${result.title}
      URL: ${result.link}
      Snippet: ${result.snippet || 'No description available'}`
-).join('\n\n')}
+    ).join('\n\n')}
 
 Extract the BEST learning resources and return as JSON array. Each resource should have:
 - title: Resource title
@@ -1312,7 +1312,7 @@ Return ONLY the JSON array, no other text:`;
   guessResourceType(title, url) {
     const titleLower = title.toLowerCase();
     const urlLower = url.toLowerCase();
-    
+
     if (titleLower.includes('course') || urlLower.includes('course')) return 'Course';
     if (titleLower.includes('tutorial') || titleLower.includes('guide')) return 'Tutorial';
     if (titleLower.includes('documentation') || urlLower.includes('docs')) return 'Documentation';
@@ -1320,7 +1320,7 @@ Return ONLY the JSON array, no other text:`;
     if (titleLower.includes('book') || urlLower.includes('book')) return 'Book';
     if (titleLower.includes('interactive') || titleLower.includes('playground')) return 'Interactive';
     if (titleLower.includes('project') || titleLower.includes('build')) return 'Project';
-    
+
     return 'Article';
   }
 }

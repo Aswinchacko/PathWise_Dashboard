@@ -19,7 +19,7 @@ const Subscription = () => {
 
   const fetchUserSubscription = async (userId) => {
     if (!userId) return
-    
+
     try {
       const response = await fetch(`http://localhost:8006/api/subscription/user/${userId}`)
       if (response.ok) {
@@ -84,7 +84,7 @@ const Subscription = () => {
   ]
 
   // Filter plans based on user subscription status
-  const subscriptionPlans = userSubscription?.plan === 'premium' 
+  const subscriptionPlans = userSubscription?.plan === 'premium'
     ? allSubscriptionPlans.filter(plan => plan.id === 'premium')
     : allSubscriptionPlans
 
@@ -99,7 +99,7 @@ const Subscription = () => {
   return (
     <div className="subscription-page">
       {/* Hero Section */}
-      <motion.div 
+      <motion.div
         className="pricing-hero"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -151,7 +151,7 @@ const Subscription = () => {
                     {plan.id === 'free' ? <Zap size={24} /> : <Sparkles size={24} />}
                   </div>
                 </div>
-                
+
                 <div className="plan-title-section">
                   <div className="plan-subtitle">{plan.id === 'free' ? 'Perfect for beginners' : 'Most popular choice'}</div>
                   <h3>{plan.name}</h3>
@@ -176,7 +176,7 @@ const Subscription = () => {
                 </div>
 
                 <div className="button-container">
-                  <button 
+                  <button
                     className={`cta-button ${plan.popular ? 'popular' : ''} ${userSubscription?.plan === plan.id ? 'current-plan' : ''}`}
                     onClick={() => handleUpgrade(plan)}
                     disabled={userSubscription?.plan === plan.id}
@@ -223,7 +223,7 @@ const Subscription = () => {
 
       {/* Feature Comparison Table - Only show for free users */}
       {userSubscription?.plan !== 'premium' && (
-        <motion.div 
+        <motion.div
           className="comparison-section"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -272,7 +272,7 @@ const Subscription = () => {
       )}
 
       {/* FAQ Section */}
-      <motion.div 
+      <motion.div
         className="faq-section"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -1,7 +1,23 @@
 import axios from 'axios';
 import authService from './authService';
 
-const API_URL = 'http://localhost:8006/api/v1/microlearning';
+// Use VITE_MICROLEARNING_API_URL in dashboard/.env; default matches common local run on 8007
+const API_URL =
+  import.meta.env.VITE_MICROLEARNING_API_URL || 'http://localhost:8007/api/v1/microlearning';
+
+/**
+ * Same shape as roadmap_api.initialize_microlearning() so IDs match (m_0, m_1, …).
+ */
+export function roadmapStepsToMicroMilestones(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return [];
+  return steps
+    .map((step, i) => ({
+      id: `m_${i}`,
+      title: step.category || `Phase ${i + 1}`,
+      topics: Array.isArray(step.skills) ? step.skills.filter(Boolean) : [],
+    }))
+    .filter((m) => m.topics.length > 0);
+}
 
 class MicroLearningService {
     /**

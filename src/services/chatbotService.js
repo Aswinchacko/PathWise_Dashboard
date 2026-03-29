@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const CHATBOT_API_URL = 'http://localhost:8004'
+const ROADMAP_API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 const chatbotService = {
   // Send a message to the chatbot
@@ -119,10 +120,13 @@ const chatbotService = {
     }
   },
 
-  // Get user's saved roadmaps
+  // User roadmaps live in the roadmap service (same DB as Roadmap page)
   async getUserRoadmaps(userId) {
+    if (!userId) return []
     try {
-      const response = await axios.get(`${CHATBOT_API_URL}/roadmap/user/${userId}`)
+      const response = await axios.get(
+        `${ROADMAP_API_BASE}/api/roadmap/roadmaps/user/${encodeURIComponent(userId)}`
+      )
       return response.data.roadmaps || []
     } catch (error) {
       console.error('Error getting user roadmaps:', error)
@@ -130,10 +134,12 @@ const chatbotService = {
     }
   },
 
-  // Delete a roadmap
   async deleteRoadmap(roadmapId, userId) {
     try {
-      const response = await axios.delete(`${CHATBOT_API_URL}/roadmap/${roadmapId}?user_id=${userId}`)
+      const response = await axios.delete(
+        `${ROADMAP_API_BASE}/api/roadmap/roadmaps/${encodeURIComponent(roadmapId)}`,
+        { params: { user_id: userId } }
+      )
       return response.data
     } catch (error) {
       console.error('Error deleting roadmap:', error)

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Target,
   BookOpen,
@@ -10,6 +11,13 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
+  Pencil,
+  Clock,
+  Layers,
+  Star,
+  RefreshCw,
+  X,
+  Trash2,
 } from 'lucide-react'
 import './Roadmap.css'
 import roadmapService from '../services/roadmapService'
@@ -17,6 +25,349 @@ import authService from '../services/authService'
 import recommendationService from '../services/recommendationService'
 import mentorService from '../services/mentorService'
 import ConfirmationModal from '../components/ConfirmationModal'
+import TopicRefineModal from '../components/TopicRefineModal'
+
+/** Remember which roadmap to show when the user returns to this page */
+const ACTIVE_ROADMAP_ID_KEY = 'pathwise.activeRoadmapId'
+
+/** Per-phase colors (CSS variables) — cycles for long roadmaps */
+const PHASE_THEME_STYLES = [
+  {
+    ['--phase-zone-bg']: 'rgba(254, 252, 232, 0.72)',
+    ['--phase-zone-border']: 'rgba(217, 119, 6, 0.22)',
+    ['--phase-trunk-bg']: 'rgba(254, 243, 199, 0.55)',
+    ['--phase-main-from']: '#fffbeb',
+    ['--phase-main-mid']: '#fde047',
+    ['--phase-main-to']: '#facc15',
+    ['--phase-skill-from']: '#fff7ed',
+    ['--phase-skill-to']: '#fdba74',
+    ['--phase-spine']: '#ca8a04',
+    ['--phase-spine-soft']: '#eab308',
+    ['--phase-join']: '#ca8a04',
+  },
+  {
+    ['--phase-zone-bg']: 'rgba(240, 253, 250, 0.72)',
+    ['--phase-zone-border']: 'rgba(13, 148, 136, 0.22)',
+    ['--phase-trunk-bg']: 'rgba(204, 251, 241, 0.5)',
+    ['--phase-main-from']: '#f0fdfa',
+    ['--phase-main-mid']: '#5eead4',
+    ['--phase-main-to']: '#14b8a6',
+    ['--phase-skill-from']: '#ecfeff',
+    ['--phase-skill-to']: '#67e8f9',
+    ['--phase-spine']: '#0d9488',
+    ['--phase-spine-soft']: '#2dd4bf',
+    ['--phase-join']: '#0f766e',
+  },
+  {
+    ['--phase-zone-bg']: 'rgba(245, 243, 255, 0.72)',
+    ['--phase-zone-border']: 'rgba(124, 58, 237, 0.2)',
+    ['--phase-trunk-bg']: 'rgba(237, 233, 254, 0.55)',
+    ['--phase-main-from']: '#faf5ff',
+    ['--phase-main-mid']: '#c4b5fd',
+    ['--phase-main-to']: '#8b5cf6',
+    ['--phase-skill-from']: '#f3e8ff',
+    ['--phase-skill-to']: '#d8b4fe',
+    ['--phase-spine']: '#6d28d9',
+    ['--phase-spine-soft']: '#a78bfa',
+    ['--phase-join']: '#5b21b6',
+  },
+  {
+    ['--phase-zone-bg']: 'rgba(255, 241, 242, 0.72)',
+    ['--phase-zone-border']: 'rgba(225, 29, 72, 0.18)',
+    ['--phase-trunk-bg']: 'rgba(255, 228, 230, 0.55)',
+    ['--phase-main-from']: '#fff1f2',
+    ['--phase-main-mid']: '#fda4af',
+    ['--phase-main-to']: '#f43f5e',
+    ['--phase-skill-from']: '#ffe4e6',
+    ['--phase-skill-to']: '#fb7185',
+    ['--phase-spine']: '#e11d48',
+    ['--phase-spine-soft']: '#fb7185',
+    ['--phase-join']: '#be123c',
+  },
+  {
+    ['--phase-zone-bg']: 'rgba(236, 253, 245, 0.72)',
+    ['--phase-zone-border']: 'rgba(5, 150, 105, 0.2)',
+    ['--phase-trunk-bg']: 'rgba(209, 250, 229, 0.55)',
+    ['--phase-main-from']: '#ecfdf5',
+    ['--phase-main-mid']: '#6ee7b7',
+    ['--phase-main-to']: '#10b981',
+    ['--phase-skill-from']: '#d1fae5',
+    ['--phase-skill-to']: '#34d399',
+    ['--phase-spine']: '#059669',
+    ['--phase-spine-soft']: '#34d399',
+    ['--phase-join']: '#047857',
+  },
+  {
+    ['--phase-zone-bg']: 'rgba(255, 247, 237, 0.72)',
+    ['--phase-zone-border']: 'rgba(234, 88, 12, 0.2)',
+    ['--phase-trunk-bg']: 'rgba(255, 237, 213, 0.55)',
+    ['--phase-main-from']: '#fff7ed',
+    ['--phase-main-mid']: '#fdba74',
+    ['--phase-main-to']: '#f97316',
+    ['--phase-skill-from']: '#ffedd5',
+    ['--phase-skill-to']: '#fb923c',
+    ['--phase-spine']: '#ea580c',
+    ['--phase-spine-soft']: '#fb923c',
+    ['--phase-join']: '#c2410c',
+  },
+]
+
+const phaseThemeStyle = (stepIndex) => PHASE_THEME_STYLES[stepIndex % PHASE_THEME_STYLES.length]
+
+const getUserId = (u) => {
+  if (!u) return null
+  const id = u.id ?? u._id
+  return id != null ? String(id) : null
+}
+
+/** roadmap.sh-style skill leaf (used in flow layout) */
+function FlowSkillNode({
+  skill,
+  skillIndex,
+  step,
+  stepIndex,
+  completedIds,
+  processingSkill,
+  isCoreTopic,
+  toggleCompleted,
+  highlightText,
+  searchTerm,
+  user,
+  loadedRoadmapId,
+  openTopicEdit,
+}) {
+  const done = completedIds.has(skill.id)
+  const core = isCoreTopic(skill.title, skillIndex)
+  return (
+    <div
+      className={`roadmap-flow-skill ${done ? 'roadmap-flow-skill--done' : ''} ${core ? 'roadmap-flow-skill--core' : ''} ${processingSkill === skill.id ? 'roadmap-flow-skill--busy' : ''}`}
+    >
+      {core && (
+        <span className="roadmap-flow-skill__pin" title="Key topic">
+          <Star size={10} strokeWidth={2.5} aria-hidden />
+        </span>
+      )}
+      {done && (
+        <span className="roadmap-flow-skill__done-badge" aria-hidden>
+          <CheckCircle2 size={14} strokeWidth={2.5} />
+        </span>
+      )}
+      <button
+        type="button"
+        className="roadmap-flow-skill__check"
+        onClick={(e) => toggleCompleted(e, skill.id, skill.title, skillIndex, step, stepIndex)}
+        disabled={processingSkill === skill.id}
+        aria-label={`Mark ${skill.title} as ${done ? 'incomplete' : 'complete'}`}
+      >
+        {processingSkill === skill.id ? (
+          <Loader2 size={16} className="spinning" />
+        ) : done ? (
+          <CheckCircle2 size={16} strokeWidth={2} />
+        ) : (
+          <Circle size={16} strokeWidth={2} />
+        )}
+      </button>
+      <div className="roadmap-flow-skill__body">
+        <span className="roadmap-flow-skill__title">{highlightText(skill.title, searchTerm)}</span>
+        <span className="roadmap-flow-skill__level">
+          {skillIndex < 2 ? 'Beginner' : skillIndex < 4 ? 'Intermediate' : 'Advanced'}
+        </span>
+      </div>
+      <button
+        type="button"
+        className="roadmap-flow-skill__edit"
+        disabled={!getUserId(user) || !loadedRoadmapId}
+        title={
+          !getUserId(user)
+            ? 'Sign in to edit with AI'
+            : !loadedRoadmapId
+              ? 'Load a saved roadmap for AI edits'
+              : 'Edit with AI'
+        }
+        onClick={(e) => {
+          e.stopPropagation()
+          openTopicEdit(step, stepIndex, skill, skillIndex)
+        }}
+      >
+        <Pencil size={14} aria-hidden />
+      </button>
+    </div>
+  )
+}
+
+/** Expanded phase: hub SVG lines from main card ↔ each skill; main card vertically centered in spine */
+function RoadmapPhaseExpandedContent({
+  step,
+  stepIndex,
+  leftBranches,
+  rightBranches,
+  completedIds,
+  processingSkill,
+  isCoreTopic,
+  toggleCompleted,
+  highlightText,
+  searchTerm,
+  user,
+  loadedRoadmapId,
+  openTopicEdit,
+  toggleCollapsed,
+}) {
+  const wrapRef = useRef(null)
+  const [hubLines, setHubLines] = useState(null)
+
+  const revision = `${completedIds.size}-${step.children?.length ?? 0}`
+
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current
+    if (!wrap) return
+
+    const compute = () => {
+      if (typeof window !== 'undefined' && window.innerWidth <= 820) {
+        setHubLines(null)
+        return
+      }
+      const phase = wrap.closest('.roadmap-flow-phase')
+      const main = wrap.querySelector('.roadmap-flow-main-node')
+      if (!phase || !main) {
+        setHubLines(null)
+        return
+      }
+
+      const wRect = wrap.getBoundingClientRect()
+      const mRect = main.getBoundingClientRect()
+      if (wRect.width < 40 || wRect.height < 40) {
+        setHubLines(null)
+        return
+      }
+
+      const stroke =
+        getComputedStyle(phase).getPropertyValue('--phase-join').trim() || '#ca8a04'
+
+      const mxL = mRect.left - wRect.left
+      const mxR = mRect.right - wRect.left
+      const my = mRect.top - wRect.top + mRect.height / 2
+
+      const paths = []
+      wrap.querySelectorAll('.roadmap-flow-branch--left .roadmap-flow-skill').forEach((sk) => {
+        const r = sk.getBoundingClientRect()
+        const sx = r.right - wRect.left
+        const sy = r.top - wRect.top + r.height / 2
+        const midx = (sx + mxL) / 2
+        paths.push(`M ${sx} ${sy} Q ${midx} ${sy} ${mxL} ${my}`)
+      })
+      wrap.querySelectorAll('.roadmap-flow-branch--right .roadmap-flow-skill').forEach((sk) => {
+        const r = sk.getBoundingClientRect()
+        const sx = r.left - wRect.left
+        const sy = r.top - wRect.top + r.height / 2
+        const midx = (sx + mxR) / 2
+        paths.push(`M ${mxR} ${my} Q ${midx} ${sy} ${sx} ${sy}`)
+      })
+
+      setHubLines({
+        w: Math.max(1, wRect.width),
+        h: Math.max(1, wRect.height),
+        paths,
+        stroke,
+      })
+    }
+
+    compute()
+    const ro = new ResizeObserver(() => requestAnimationFrame(compute))
+    ro.observe(wrap)
+    window.addEventListener('resize', compute)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', compute)
+    }
+  }, [revision, step.id])
+
+  return (
+    <div className="roadmap-flow-phase-grid-wrap" ref={wrapRef}>
+      {hubLines && hubLines.paths.length > 0 && (
+        <svg
+          className="roadmap-flow-hub-svg"
+          width={hubLines.w}
+          height={hubLines.h}
+          aria-hidden
+        >
+          {hubLines.paths.map((d, i) => (
+            <path
+              key={i}
+              d={d}
+              fill="none"
+              stroke={hubLines.stroke}
+              strokeWidth={2.25}
+              strokeDasharray="5 7"
+              strokeLinecap="round"
+            />
+          ))}
+        </svg>
+      )}
+      <div className="roadmap-flow-columns">
+        <div className="roadmap-flow-side roadmap-flow-side--left">
+          {leftBranches.map(({ skill, skillIndex }) => (
+            <div key={skillIndex} className="roadmap-flow-branch roadmap-flow-branch--left">
+              <FlowSkillNode
+                skill={skill}
+                skillIndex={skillIndex}
+                step={step}
+                stepIndex={stepIndex}
+                completedIds={completedIds}
+                processingSkill={processingSkill}
+                isCoreTopic={isCoreTopic}
+                toggleCompleted={toggleCompleted}
+                highlightText={highlightText}
+                searchTerm={searchTerm}
+                user={user}
+                loadedRoadmapId={loadedRoadmapId}
+                openTopicEdit={openTopicEdit}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="roadmap-flow-spine-column">
+          <div className="roadmap-flow-main-wrap">
+            <button
+              type="button"
+              className="roadmap-flow-main-node"
+              onClick={() => toggleCollapsed(step.id)}
+            >
+              <span className="roadmap-flow-main-node__chev">
+                <ChevronDown size={18} />
+              </span>
+              <span className="roadmap-flow-main-node__num">{stepIndex + 1}</span>
+              <h3 className="roadmap-flow-main-node__title">{step.title}</h3>
+              <span className="roadmap-flow-main-node__tag">Topic</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="roadmap-flow-side roadmap-flow-side--right">
+          {rightBranches.map(({ skill, skillIndex }) => (
+            <div key={skillIndex} className="roadmap-flow-branch roadmap-flow-branch--right">
+              <FlowSkillNode
+                skill={skill}
+                skillIndex={skillIndex}
+                step={step}
+                stepIndex={stepIndex}
+                completedIds={completedIds}
+                processingSkill={processingSkill}
+                isCoreTopic={isCoreTopic}
+                toggleCompleted={toggleCompleted}
+                highlightText={highlightText}
+                searchTerm={searchTerm}
+                user={user}
+                loadedRoadmapId={loadedRoadmapId}
+                openTopicEdit={openTopicEdit}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const Roadmap = () => {
   // State for ML-generated roadmaps
@@ -43,6 +394,17 @@ const Roadmap = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [roadmapToDelete, setRoadmapToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  /** Mongo `roadmap_id` for the roadmap currently shown (required to persist AI edits). */
+  const [loadedRoadmapId, setLoadedRoadmapId] = useState(null)
+  const [topicEdit, setTopicEdit] = useState(null)
+  const [refineSuccessToast, setRefineSuccessToast] = useState(null)
+
+  useEffect(() => {
+    if (!refineSuccessToast) return
+    const t = setTimeout(() => setRefineSuccessToast(null), 4500)
+    return () => clearTimeout(t)
+  }, [refineSuccessToast])
 
   // Load user and domains on component mount
   useEffect(() => {
@@ -73,52 +435,82 @@ const Roadmap = () => {
     // Don't load latest roadmap automatically - let user choose
   }, [])
 
-  // Load saved roadmaps when user is available
-  useEffect(() => {
-    if (user) {
-      loadSavedRoadmaps()
+  const loadSavedRoadmaps = useCallback(async () => {
+    const uid = getUserId(user)
+    setIsLoadingRoadmaps(true)
+    if (!uid) {
+      setSavedRoadmaps([])
+      setIsLoadingRoadmaps(false)
+      return
     }
-  }, [user])
-
-  // Load latest roadmap after saved roadmaps are loaded
-  useEffect(() => {
-    if (savedRoadmaps.length >= 0) { // Run when savedRoadmaps changes (including empty array)
-      loadLatestRoadmap()
-    }
-  }, [savedRoadmaps])
-
-  const loadSavedRoadmaps = async () => {
     try {
-      setIsLoadingRoadmaps(true)
-      const response = await roadmapService.getUserRoadmaps(user.id)
-      setSavedRoadmaps(response.roadmaps)
+      const response = await roadmapService.getUserRoadmaps(uid)
+      setSavedRoadmaps(response.roadmaps || [])
     } catch (error) {
       console.error('Error loading saved roadmaps:', error)
+      setSavedRoadmaps([])
     } finally {
       setIsLoadingRoadmaps(false)
     }
-  }
+  }, [user])
 
-  const loadLatestRoadmap = async () => {
+  // Load saved roadmaps whenever user identity is known (or guest clears list)
+  useEffect(() => {
+    loadSavedRoadmaps()
+  }, [loadSavedRoadmaps])
+
+  // Refresh list when chatbot (or elsewhere) adds a roadmap
+  useEffect(() => {
+    if (!getUserId(user)) return
+    const onRoadmapChanged = () => loadSavedRoadmaps()
+    window.addEventListener('roadmapChanged', onRoadmapChanged)
+    return () => window.removeEventListener('roadmapChanged', onRoadmapChanged)
+  }, [user, loadSavedRoadmaps])
+
+  const loadLatestRoadmap = useCallback(() => {
     try {
-      // Only load latest roadmap if user has saved roadmaps
-      if (savedRoadmaps.length > 0) {
-        // Get the most recent saved roadmap
-        const latestRoadmap = savedRoadmaps[0] // Assuming they're sorted by date
-        const convertedData = roadmapService.convertToRoadmapData(latestRoadmap)
-        setRoadmapData(convertedData)
-        setCurrentDomain(latestRoadmap.domain)
-        console.log('Loaded latest saved roadmap:', latestRoadmap.goal)
-      } else {
-        // Clear roadmap data if no saved roadmaps
+      if (!savedRoadmaps.length) {
         setRoadmapData([])
         setCurrentDomain('')
-        console.log('No saved roadmaps found, clearing roadmap data')
+        setLoadedRoadmapId(null)
+        return
+      }
+
+      let preferredId = null
+      try {
+        preferredId = localStorage.getItem(ACTIVE_ROADMAP_ID_KEY)
+        if (!preferredId) {
+          const g = localStorage.getItem('current_goal')
+          if (g) preferredId = JSON.parse(g).roadmapId ?? null
+        }
+      } catch (_) {
+        preferredId = null
+      }
+      if (preferredId != null) preferredId = String(preferredId)
+
+      const match = preferredId
+        ? savedRoadmaps.find(
+            (r) => String(r.id ?? '') === preferredId || String(r._id ?? '') === preferredId
+          )
+        : null
+
+      const roadmap = match || savedRoadmaps[0]
+      const convertedData = roadmapService.convertToRoadmapData(roadmap)
+      setRoadmapData(convertedData)
+      setCurrentDomain(roadmap.domain || '')
+      setLoadedRoadmapId(roadmap.id || null)
+      if (roadmap.id) {
+        localStorage.setItem(ACTIVE_ROADMAP_ID_KEY, String(roadmap.id))
       }
     } catch (error) {
-      console.error('Error loading latest roadmap:', error)
+      console.error('Error loading roadmap into view:', error)
     }
-  }
+  }, [savedRoadmaps])
+
+  // Show the right roadmap whenever the saved list updates
+  useEffect(() => {
+    loadLatestRoadmap()
+  }, [loadLatestRoadmap])
 
 
   const generateRoadmap = async () => {
@@ -133,13 +525,16 @@ const Roadmap = () => {
     try {
       const response = await roadmapService.generateRoadmap(
         goal,
-        null,  // No domain - let AI find the best match
-        user?.id || null
+        null, // No domain - let AI find the best match
+        getUserId(user)
       )
 
       const convertedData = roadmapService.convertToRoadmapData(response)
       setRoadmapData(convertedData)
       setCurrentDomain(response.domain)
+      const newId = response.id || response.roadmap_id || null
+      setLoadedRoadmapId(newId)
+      if (newId) localStorage.setItem(ACTIVE_ROADMAP_ID_KEY, String(newId))
       setShowGenerator(false)
       
       // Save current roadmap goal for mentor recommendations
@@ -199,6 +594,9 @@ const Roadmap = () => {
     const convertedData = roadmapService.convertToRoadmapData(roadmap)
     setRoadmapData(convertedData)
     setCurrentDomain(roadmap.domain)
+    const rid = roadmap.id || null
+    setLoadedRoadmapId(rid)
+    if (rid) localStorage.setItem(ACTIVE_ROADMAP_ID_KEY, String(rid))
     setShowSavedRoadmaps(false)
     
     // Save current roadmap for job recommendations
@@ -216,7 +614,20 @@ const Roadmap = () => {
     // Notify other components (like Jobs page) that roadmap changed
     window.dispatchEvent(new CustomEvent('roadmapChanged', { detail: roadmapData }))
     console.log('🔄 Roadmap changed, notifying Jobs page...', roadmap.goal)
-    
+
+    // Keep Micro-Learning and other features aligned with the roadmap open on this page
+    if (roadmap.id) {
+      localStorage.setItem(
+        'current_goal',
+        JSON.stringify({
+          goal: roadmap.goal,
+          domain: roadmap.domain,
+          createdAt: roadmap.created_at || new Date().toISOString(),
+          roadmapId: roadmap.id,
+        })
+      )
+    }
+
     // Clear completion state when loading a different roadmap
     setCompletedIds(new Set())
     setCompletedTopics([])
@@ -233,7 +644,7 @@ const Roadmap = () => {
 
     setIsDeleting(true)
     try {
-      await roadmapService.deleteRoadmap(roadmapToDelete.id, user.id)
+      await roadmapService.deleteRoadmap(roadmapToDelete.id, getUserId(user))
       loadSavedRoadmaps()
       console.log('Roadmap deleted successfully')
       
@@ -569,10 +980,102 @@ const Roadmap = () => {
     )
   }, [])
 
+  const openTopicEdit = useCallback((step, stepIndex, skill, skillIndex) => {
+    setTopicEdit({
+      stepIndex,
+      skillIndex,
+      skillTitle: skill.title,
+      phaseTitle: step.title,
+    })
+  }, [])
+
+  const closeTopicEdit = useCallback(() => {
+    setTopicEdit(null)
+  }, [])
+
+  const handleRefineFromModal = useCallback(
+    async ({ instruction, preset }) => {
+      const userId = user?.id ?? user?._id
+      if (!userId || !loadedRoadmapId || !topicEdit) {
+        throw new Error('Sign in and load a saved roadmap before applying AI edits.')
+      }
+      try {
+        const data = await roadmapService.refineTopic({
+          roadmapId: loadedRoadmapId,
+          userId: String(userId),
+          stepIndex: topicEdit.stepIndex,
+          skillIndex: topicEdit.skillIndex,
+          instruction,
+          preset,
+        })
+        const converted = roadmapService.convertToRoadmapData(data)
+        setRoadmapData(converted)
+        const prefix = `step_${topicEdit.stepIndex}_skill_`
+        setCompletedIds((prev) => {
+          const next = new Set(prev)
+          for (const id of prev) {
+            if (String(id).startsWith(prefix)) next.delete(id)
+          }
+          return next
+        })
+        window.dispatchEvent(
+          new CustomEvent('roadmapChanged', {
+            detail: {
+              goal: data.goal,
+              domain: data.domain,
+              title: data.goal,
+              name: data.goal,
+            },
+          })
+        )
+        void loadSavedRoadmaps()
+        setRefineSuccessToast({
+          title: 'Changes made',
+          detail: (data.message && String(data.message).trim()) || 'Your roadmap topic was updated.',
+        })
+      } catch (err) {
+        const status = err.response?.status
+        const detail = err.response?.data?.detail
+        let msg = err.message || 'Refine failed'
+        if (typeof detail === 'string') msg = detail
+        else if (Array.isArray(detail))
+          msg = detail.map((d) => d.msg || JSON.stringify(d)).join('; ')
+        if (status === 404 && (msg === 'Not Found' || msg.includes('Not Found'))) {
+          msg =
+            'Roadmap API returned 404. Restart the roadmap service (port 8000) so it runs the latest code with POST /api/roadmap/refine-topic, and confirm VITE_API_BASE_URL matches that server.'
+        }
+        throw new Error(msg)
+      }
+    },
+    [user, loadedRoadmapId, topicEdit, loadSavedRoadmaps]
+  )
+
   // Simple layout - no complex positioning needed
 
   return (
     <div className="roadmap-page">
+      {refineSuccessToast &&
+        createPortal(
+          <div className="refine-success-toast" role="status" aria-live="polite">
+            <div className="refine-success-toast-inner">
+              <CheckCircle2 className="refine-success-toast-icon" size={22} aria-hidden />
+              <div className="refine-success-toast-text">
+                <strong>{refineSuccessToast.title}</strong>
+                <p>{refineSuccessToast.detail}</p>
+              </div>
+              <button
+                type="button"
+                className="refine-success-toast-dismiss"
+                onClick={() => setRefineSuccessToast(null)}
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
       {/* Simple Header */}
       <div className="simple-header">
         <h1>Career Roadmap Generator</h1>
@@ -713,14 +1216,17 @@ const Roadmap = () => {
                           {root.metadata.difficulty || 'Intermediate'}
                         </span>
                         <span className="hours-badge">
-                          ⏱️ {root.metadata.estimatedHours || 300} hours
+                          <Clock size={14} strokeWidth={2} aria-hidden />
+                          {root.metadata.estimatedHours || 300}h estimated
                         </span>
                         <span className="domain-badge">
-                          📚 {root.metadata.domain}
+                          <Layers size={14} strokeWidth={2} aria-hidden />
+                          {root.metadata.domain}
                         </span>
                         {root.metadata.matchScore > 0 && (
                           <span className="match-badge">
-                            ✨ {Math.round(root.metadata.matchScore * 100)}% match
+                            <Sparkles size={14} strokeWidth={2} aria-hidden />
+                            {Math.round(root.metadata.matchScore * 100)}% match
                           </span>
                         )}
                       </div>
@@ -742,86 +1248,109 @@ const Roadmap = () => {
                       </div>
                     )}
                   </div>
-                  <div className="roadmap-progress">
+                  <div className="roadmap-progress roadmap-progress-card">
+                    <span className="roadmap-progress-label">Your progress</span>
+                    <div className="progress-ring-meta">
+                      <span className="progress-stat">
+                        <strong>{completedIds.size}</strong>
+                        <span className="progress-stat-sub">done</span>
+                      </span>
+                      <span className="progress-stat-div">/</span>
+                      <span className="progress-stat">
+                        <strong>
+                          {root.children?.reduce((acc, step) => acc + (step.children?.length || 0), 0) || 0}
+                        </strong>
+                        <span className="progress-stat-sub">skills</span>
+                      </span>
+                    </div>
                     <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ 
-                          width: `${(completedIds.size / (root.children?.reduce((acc, step) => acc + (step.children?.length || 0), 0) || 1)) * 100}%` 
+                      <div
+                        className="progress-fill"
+                        style={{
+                          width: `${(completedIds.size / (root.children?.reduce((acc, step) => acc + (step.children?.length || 0), 0) || 1)) * 100}%`,
                         }}
-                      ></div>
+                      />
                     </div>
                     <span className="progress-text">
-                      <span className="progress-completed">{completedIds.size}</span>
-                      {' / '}
-                      <span className="progress-total">{root.children?.reduce((acc, step) => acc + (step.children?.length || 0), 0) || 0}</span>
-                      {' skills completed'}
                       <span className="progress-percentage">
-                        ({Math.round((completedIds.size / (root.children?.reduce((acc, step) => acc + (step.children?.length || 0), 0) || 1)) * 100)}%)
+                        {Math.round(
+                          (completedIds.size /
+                            (root.children?.reduce((acc, step) => acc + (step.children?.length || 0), 0) || 1)) *
+                            100
+                        )}
+                        % complete
                       </span>
                     </span>
                   </div>
                 </div>
                 
-                <div className="roadmap-timeline">
-                  {root.children?.map((step, stepIndex) => (
-                    <div key={stepIndex} className="timeline-item">
-                      <div className="timeline-marker">
-                        <div className="marker-number">{stepIndex + 1}</div>
-                        <div className="marker-line"></div>
-                      </div>
-                      
-                      <div className="timeline-content">
-                        <div className="step-card">
-                          <div className="step-header">
-                            <div className="step-info">
-                              <h3 className="step-title">{step.title}</h3>
-                              <span className="step-badge">Phase {stepIndex + 1}</span>
-                            </div>
-                            <button
-                              className={`collapse-btn ${isNodeCollapsed(step.id) ? 'collapsed' : ''}`}
-                              onClick={() => toggleCollapsed(step.id)}
-                            >
-                              {isNodeCollapsed(step.id) ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-                            </button>
+                <div className="roadmap-flow" aria-label="Learning path">
+                  {root.children?.map((step, stepIndex) => {
+                    const phaseKey = step.id ?? `phase_${stepIndex}`
+                    const leftBranches = []
+                    const rightBranches = []
+                    step.children?.forEach((skill, i) => {
+                      const pair = { skill, skillIndex: i }
+                      if (i % 2 === 0) leftBranches.push(pair)
+                      else rightBranches.push(pair)
+                    })
+                    const collapsed = isNodeCollapsed(step.id)
+
+                    return (
+                      <div
+                        key={phaseKey}
+                        className="roadmap-flow-phase"
+                        style={phaseThemeStyle(stepIndex)}
+                      >
+                        {stepIndex > 0 && (
+                          <div className="roadmap-flow-spine-gap-row" aria-hidden>
+                            <div className="roadmap-flow-spine-gap" />
                           </div>
-                          
-                          {!isNodeCollapsed(step.id) && step.children && (
-                            <div className="skills-grid">
-                              {step.children.map((skill, skillIndex) => (
-                                <div 
-                                  key={skillIndex} 
-                                  className={`skill-card ${completedIds.has(skill.id) ? 'completed' : ''} ${isCoreTopic(skill.title, skillIndex) ? 'core-topic' : ''} ${processingSkill === skill.id ? 'processing' : ''}`}
+                        )}
+                        <div
+                          className={`roadmap-flow-phase-body ${collapsed ? 'roadmap-flow-phase-body--collapsed' : ''}`}
+                        >
+                          {!collapsed ? (
+                            <RoadmapPhaseExpandedContent
+                              step={step}
+                              stepIndex={stepIndex}
+                              leftBranches={leftBranches}
+                              rightBranches={rightBranches}
+                              completedIds={completedIds}
+                              processingSkill={processingSkill}
+                              isCoreTopic={isCoreTopic}
+                              toggleCompleted={toggleCompleted}
+                              highlightText={highlightText}
+                              searchTerm={searchTerm}
+                              user={user}
+                              loadedRoadmapId={loadedRoadmapId}
+                              openTopicEdit={openTopicEdit}
+                              toggleCollapsed={toggleCollapsed}
+                            />
+                          ) : (
+                            <div className="roadmap-flow-collapsed">
+                              <div className="roadmap-flow-spine-column roadmap-flow-spine-column--collapsed">
+                                <button
+                                  type="button"
+                                  className="roadmap-flow-main-node roadmap-flow-main-node--collapsed"
+                                  onClick={() => toggleCollapsed(step.id)}
                                 >
-                                  <button
-                                    className="skill-checkbox"
-                                    onClick={(e) => toggleCompleted(e, skill.id, skill.title, skillIndex, step, stepIndex)}
-                                    type="button"
-                                    disabled={processingSkill === skill.id}
-                                    aria-label={`Mark ${skill.title} as ${completedIds.has(skill.id) ? 'incomplete' : 'complete'}`}
-                                  >
-                                    {processingSkill === skill.id ? (
-                                      <Loader2 size={18} className="spinning" />
-                                    ) : completedIds.has(skill.id) ? (
-                                      <CheckCircle2 size={18} />
-                                    ) : (
-                                      <Circle size={18} />
-                                    )}
-                                  </button>
-                                  <div className="skill-content">
-                                    <span className="skill-text">{highlightText(skill.title, searchTerm)}</span>
-                                    <div className="skill-level">
-                                      {skillIndex < 2 ? 'Beginner' : skillIndex < 4 ? 'Intermediate' : 'Advanced'}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
+                                  <span className="roadmap-flow-main-node__chev">
+                                    <ChevronRight size={18} />
+                                  </span>
+                                  <span className="roadmap-flow-main-node__num">{stepIndex + 1}</span>
+                                  <h3 className="roadmap-flow-main-node__title">{step.title}</h3>
+                                  <span className="roadmap-flow-main-node__count">
+                                    {step.children?.length ?? 0} skills
+                                  </span>
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -899,87 +1428,139 @@ const Roadmap = () => {
         </div>
       )}
 
-      {/* Simple Saved Roadmaps Modal */}
+      {/* Saved Roadmaps — teal / slate modal */}
       {showSavedRoadmaps && (
-        <div className="modal-overlay">
-          <div className="simple-modal">
-            <div className="modal-header">
-              <h2>Saved Roadmaps</h2>
-              <div className="modal-actions">
-                <button 
-                  className="refresh-btn"
+        <div
+          className="modal-overlay saved-roadmaps-overlay"
+          role="presentation"
+          onClick={() => setShowSavedRoadmaps(false)}
+        >
+          <div
+            className="simple-modal saved-roadmaps-modal"
+            role="dialog"
+            aria-labelledby="saved-roadmaps-title"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="saved-roadmaps-modal__header">
+              <div className="saved-roadmaps-modal__head-main">
+                <div className="saved-roadmaps-modal__icon" aria-hidden>
+                  <BookOpen size={22} strokeWidth={2} />
+                </div>
+                <div>
+                  <h2 id="saved-roadmaps-title">Saved roadmaps</h2>
+                  <p className="saved-roadmaps-modal__subtitle">Continue where you left off</p>
+                </div>
+              </div>
+              <div className="saved-roadmaps-modal__toolbar">
+                <button
+                  type="button"
+                  className="saved-roadmaps-modal__icon-btn"
                   onClick={() => {
-                    console.log('🔄 Manual refresh of saved roadmaps...')
                     loadSavedRoadmaps()
                   }}
-                  title="Refresh saved roadmaps"
+                  title="Refresh list"
+                  aria-label="Refresh saved roadmaps"
                 >
-                  ↻
+                  <RefreshCw size={18} strokeWidth={2} />
                 </button>
-                <button 
-                  className="close-btn" 
+                <button
+                  type="button"
+                  className="saved-roadmaps-modal__icon-btn saved-roadmaps-modal__icon-btn--close"
                   onClick={() => setShowSavedRoadmaps(false)}
+                  title="Close"
+                  aria-label="Close"
                 >
-                  ×
+                  <X size={20} strokeWidth={2} />
                 </button>
               </div>
-            </div>
-            
-            <div className="modal-body">
-          {savedRoadmaps.length === 0 ? (
-            <div className="empty-state">
-              <BookOpen size={48} />
-              <p>No saved roadmaps yet</p>
-              <button 
-                className="btn-primary"
-                onClick={() => {
-                  setShowSavedRoadmaps(false);
-                  setShowGenerator(true);
-                }}
-              >
-                Generate First Roadmap
-              </button>
-              <button 
-                className="btn-secondary"
-                onClick={() => {
-                  console.log('🔄 Manual refresh of saved roadmaps...')
-                  loadSavedRoadmaps()
-                }}
-                style={{ marginTop: '1rem' }}
-              >
-                Refresh
-              </button>
-            </div>
+            </header>
+
+            <div className="saved-roadmaps-modal__body">
+              {savedRoadmaps.length === 0 ? (
+                <div className="saved-roadmaps-empty">
+                  <div className="saved-roadmaps-empty__illu" aria-hidden>
+                    <BookOpen size={40} strokeWidth={1.5} />
+                  </div>
+                  <p className="saved-roadmaps-empty__title">No saved roadmaps yet</p>
+                  <p className="saved-roadmaps-empty__hint">
+                    Generate a path and it&apos;ll show up here automatically.
+                  </p>
+                  <div className="saved-roadmaps-empty__actions">
+                    <button
+                      type="button"
+                      className="saved-roadmaps-btn saved-roadmaps-btn--primary"
+                      onClick={() => {
+                        setShowSavedRoadmaps(false)
+                        setShowGenerator(true)
+                      }}
+                    >
+                      <Sparkles size={16} />
+                      Generate roadmap
+                    </button>
+                    <button
+                      type="button"
+                      className="saved-roadmaps-btn saved-roadmaps-btn--ghost"
+                      onClick={() => loadSavedRoadmaps()}
+                    >
+                      <RefreshCw size={16} />
+                      Refresh
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <div className="roadmap-list">
+                <ul className="saved-roadmaps-list">
                   {savedRoadmaps.map((roadmap) => (
-                    <div key={roadmap._id} className="roadmap-item">
-                      <div className="roadmap-info">
-                        <h3>{roadmap.goal}</h3>
-                        <p>{roadmap.domain}</p>
-                        <small>{new Date(roadmap.created_at).toLocaleDateString()}</small>
+                    <li key={roadmap._id} className="saved-roadmaps-card">
+                      <div className="saved-roadmaps-card__text">
+                        <h3 className="saved-roadmaps-card__title">{roadmap.goal}</h3>
+                        <div className="saved-roadmaps-card__meta">
+                          {roadmap.domain ? (
+                            <span className="saved-roadmaps-card__pill">{roadmap.domain}</span>
+                          ) : null}
+                          <time dateTime={roadmap.created_at}>
+                            {new Date(roadmap.created_at).toLocaleDateString(undefined, {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </time>
+                        </div>
                       </div>
-                      <div className="roadmap-actions">
-                        <button 
-                          className="btn-primary"
+                      <div className="saved-roadmaps-card__actions">
+                        <button
+                          type="button"
+                          className="saved-roadmaps-card__load"
                           onClick={() => loadSavedRoadmap(roadmap)}
                         >
                           Load
+                          <ChevronRight size={16} strokeWidth={2.5} aria-hidden />
                         </button>
-                        <button 
-                          className="btn-danger"
+                        <button
+                          type="button"
+                          className="saved-roadmaps-card__delete"
                           onClick={() => handleDeleteClick(roadmap)}
+                          title="Delete roadmap"
+                          aria-label={`Delete ${roadmap.goal}`}
                         >
-                          Delete
+                          <Trash2 size={17} strokeWidth={2} />
                         </button>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
           </div>
         </div>
+      )}
+
+      {topicEdit && (
+        <TopicRefineModal
+          topicEdit={topicEdit}
+          onClose={closeTopicEdit}
+          onRefine={handleRefineFromModal}
+        />
       )}
 
       {/* Delete Confirmation Modal */}

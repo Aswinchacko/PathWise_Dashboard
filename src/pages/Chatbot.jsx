@@ -1,12 +1,47 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, MessageCircle, Bot, User, Loader2, Plus, MessageSquare, Trash2, Edit3, RefreshCw, MapPin, PlusCircle, CheckCircle, X, BookOpen, Save } from 'lucide-react'
+import {
+  Send,
+  MessageCircle,
+  Bot,
+  User,
+  Loader2,
+  Plus,
+  Trash2,
+  Edit3,
+  RefreshCw,
+  MapPin,
+  PlusCircle,
+  CheckCircle,
+  X,
+  BookOpen,
+  Save,
+  Zap,
+  Lightbulb,
+  ChevronDown,
+  Menu,
+  Sparkles,
+  Github,
+} from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import './Chatbot.css'
 import chatbotService from '../services/chatbotService'
+import authService from '../services/authService'
+import roadmapService from '../services/roadmapService'
+
+function resolveChatbotUserId() {
+  const u = authService.getCurrentUser()
+  if (u?.id) return String(u.id)
+  const stored = localStorage.getItem('chatbot_user_id')
+  if (stored) return stored
+  const newId = `user_${Date.now()}`
+  localStorage.setItem('chatbot_user_id', newId)
+  return newId
+}
 
 // Simple markdown renderer with fallback
 const SafeMarkdown = ({ content }) => {
@@ -43,7 +78,8 @@ const Chatbot = () => {
   const [isServiceAvailable, setIsServiceAvailable] = useState(true)
   const [currentChatId, setCurrentChatId] = useState(null)
   const [chatHistory, setChatHistory] = useState([])
-  const [showSidebar, setShowSidebar] = useState(true)
+  const [showSidebar, setShowSidebar] = useState(false)
+  const [planMode, setPlanMode] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [currentTitle, setCurrentTitle] = useState('New Chat')
   const [savedRoadmaps, setSavedRoadmaps] = useState([])
@@ -54,16 +90,7 @@ const Chatbot = () => {
   const [roadmapGoal, setRoadmapGoal] = useState('')
   const [roadmapDomain, setRoadmapDomain] = useState('')
   const [isCreatingRoadmap, setIsCreatingRoadmap] = useState(false)
-  const [userId] = useState(() => {
-    // Use localStorage to persist userId across sessions
-    const storedUserId = localStorage.getItem('chatbot_user_id')
-    if (storedUserId) {
-      return storedUserId
-    }
-    const newUserId = 'user_' + Date.now()
-    localStorage.setItem('chatbot_user_id', newUserId)
-    return newUserId
-  })
+  const [userId, setUserId] = useState(() => resolveChatbotUserId())
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -97,6 +124,14 @@ const Chatbot = () => {
       message: 'Create a roadmap for becoming a full-stack developer'
     },
   ]
+
+  // Prefer logged-in user id so chat + roadmaps align with Roadmap page
+  useEffect(() => {
+    const syncUser = () => setUserId(resolveChatbotUserId())
+    syncUser()
+    window.addEventListener('focus', syncUser)
+    return () => window.removeEventListener('focus', syncUser)
+  }, [])
 
   // Check service health and load chat history on component mount
   useEffect(() => {
@@ -167,7 +202,8 @@ const Chatbot = () => {
         content: msg.content,
         timestamp: new Date(msg.timestamp),
         suggestions: msg.metadata?.suggestions || [],
-        confidence: msg.metadata?.confidence
+        confidence: msg.metadata?.confidence,
+        roadmap_metadata: msg.metadata?.roadmap_metadata
       })))
       setEditingTitle(false)
     } catch (error) {
@@ -233,6 +269,7 @@ const Chatbot = () => {
         content: response.response,
         suggestions: response.suggestions || [],
         confidence: response.confidence,
+        roadmap_metadata: response.roadmap_metadata,
         timestamp: new Date()
       }
 
@@ -255,7 +292,7 @@ const Chatbot = () => {
     sendMessage(inputMessage)
   }
 
-  const handleKeyPress = (e) => {
+  const handleComposerKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
@@ -303,34 +340,66 @@ const Chatbot = () => {
   }
 
   const handleCreateRoadmapFromChat = async () => {
-    if (!roadmapTitle.trim() || !roadmapGoal.trim() || !currentChatId) {
-      alert('Please fill in all required fields')
+    const u = authService.getCurrentUser()
+    if (!u?.id) {
+      alert('Sign in to save a roadmap to your Roadmap page.')
+      return
+    }
+    if (!roadmapGoal.trim()) {
+      alert('Please enter a learning goal')
+      return
+    }
+    if (!currentChatId) {
+      alert('Please start a conversation first')
       return
     }
 
     setIsCreatingRoadmap(true)
     try {
-      const result = await chatbotService.createRoadmapFromChat(
-        userId,
-        currentChatId,
-        roadmapTitle.trim(),
+      await roadmapService.generateRoadmap(
         roadmapGoal.trim(),
-        roadmapDomain.trim() || null
+        roadmapDomain.trim() || null,
+        u.id
       )
-      
-      if (result.success) {
-        alert(`Roadmap created successfully! ID: ${result.roadmap_id}`)
-        setShowCreateRoadmapModal(false)
-        setRoadmapTitle('')
-        setRoadmapGoal('')
-        setRoadmapDomain('')
-        await loadSavedRoadmaps()
-      } else {
-        alert('Failed to create roadmap')
+      const detail = {
+        goal: roadmapGoal.trim(),
+        domain: roadmapDomain.trim() || '',
+        title: roadmapTitle.trim() || roadmapGoal.trim(),
+        name: roadmapTitle.trim() || roadmapGoal.trim(),
       }
+      window.dispatchEvent(new CustomEvent('roadmapChanged', { detail }))
+      setShowCreateRoadmapModal(false)
+      setRoadmapTitle('')
+      setRoadmapGoal('')
+      setRoadmapDomain('')
+      await loadSavedRoadmaps()
+      alert('Roadmap added — open Roadmap to view it.')
     } catch (error) {
-      console.error('Error creating roadmap:', error)
-      alert('Failed to create roadmap: ' + error.message)
+      console.error('Error creating roadmap via generator:', error)
+      try {
+        const result = await chatbotService.createRoadmapFromChat(
+          u.id,
+          currentChatId,
+          roadmapTitle.trim() || roadmapGoal.trim(),
+          roadmapGoal.trim(),
+          roadmapDomain.trim() || null
+        )
+        if (result.success) {
+          window.dispatchEvent(
+            new CustomEvent('roadmapChanged', { detail: { goal: roadmapGoal.trim() } })
+          )
+          setShowCreateRoadmapModal(false)
+          setRoadmapTitle('')
+          setRoadmapGoal('')
+          setRoadmapDomain('')
+          await loadSavedRoadmaps()
+          alert('Roadmap saved from chat (fallback). Open Roadmap to view.')
+        } else {
+          alert('Failed to create roadmap')
+        }
+      } catch (e2) {
+        alert('Failed to create roadmap: ' + (e2.message || error.message))
+      }
     } finally {
       setIsCreatingRoadmap(false)
     }
@@ -347,80 +416,187 @@ const Chatbot = () => {
     setShowCreateRoadmapModal(true)
   }
 
+  const composerDisabled = !isServiceAvailable || isLoading
+
+  const renderComposer = (variant = 'hero') => (
+    <div
+      className={`chat-composer-card ${variant === 'sticky' ? 'chat-composer-card--sticky' : ''} ${planMode ? 'chat-composer-card--plan' : ''}`}
+    >
+      <textarea
+        ref={inputRef}
+        className="chat-composer-textarea"
+        rows={variant === 'sticky' ? 2 : 4}
+        placeholder={
+          isServiceAvailable
+            ? 'What do you want to learn or build?'
+            : 'Service unavailable — try again later'
+        }
+        value={inputMessage}
+        onChange={(e) => setInputMessage(e.target.value)}
+        onKeyDown={handleComposerKeyDown}
+        disabled={composerDisabled}
+      />
+      <div className="composer-toolbar">
+        <div className="composer-toolbar-left">
+          <button
+            type="button"
+            className="composer-icon-btn"
+            title="New chat"
+            onClick={() => {
+              createNewChat()
+              setShowSidebar(false)
+            }}
+          >
+            <Plus size={20} strokeWidth={2} />
+          </button>
+          <button type="button" className="composer-model-btn" title="Assistant">
+            <Zap size={16} className="composer-model-icon" />
+            <span>PathWise AI</span>
+            <ChevronDown size={16} />
+          </button>
+        </div>
+        <div className="composer-toolbar-right">
+          <button
+            type="button"
+            className={`composer-plan-btn ${planMode ? 'is-on' : ''}`}
+            onClick={() => setPlanMode((p) => !p)}
+            title="Toggle planning focus"
+          >
+            <Lightbulb size={16} />
+            Plan
+          </button>
+          <button
+            type="button"
+            className="composer-send-pill"
+            onClick={handleSendMessage}
+            disabled={!inputMessage.trim() || composerDisabled}
+          >
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+            Chat now
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
   const handleQuickAddToRoadmap = async (roadmapMetadata) => {
+    const u = authService.getCurrentUser()
+    if (!u?.id) {
+      alert('Sign in to add this to your Roadmap page.')
+      return
+    }
     if (!currentChatId) {
       alert('Please start a conversation first')
       return
     }
 
+    const goalText =
+      (roadmapMetadata.suggested_goal || '').trim() ||
+      roadmapMetadata.suggested_title ||
+      'Learning path'
+
     setIsCreatingRoadmap(true)
     try {
-      const result = await chatbotService.createRoadmapFromChat(
-        userId,
-        currentChatId,
-        roadmapMetadata.suggested_title,
-        roadmapMetadata.suggested_goal,
-        roadmapMetadata.suggested_domain
+      await roadmapService.generateRoadmap(goalText, null, u.id)
+      window.dispatchEvent(
+        new CustomEvent('roadmapChanged', {
+          detail: {
+            goal: goalText,
+            domain: roadmapMetadata.suggested_domain || '',
+            title: roadmapMetadata.suggested_title || goalText,
+            name: roadmapMetadata.suggested_title || goalText,
+          },
+        })
       )
-      
-      if (result.success) {
-        alert(`Roadmap "${roadmapMetadata.suggested_title}" created successfully!`)
-        await loadSavedRoadmaps()
-      } else {
-        alert('Failed to create roadmap')
-      }
+      await loadSavedRoadmaps()
+      alert(`Added to Roadmap: ${roadmapMetadata.suggested_title || goalText}`)
     } catch (error) {
-      console.error('Error creating roadmap:', error)
-      alert('Failed to create roadmap: ' + error.message)
+      console.error('Error generating roadmap from chat topic:', error)
+      try {
+        const result = await chatbotService.createRoadmapFromChat(
+          u.id,
+          currentChatId,
+          roadmapMetadata.suggested_title,
+          roadmapMetadata.suggested_goal,
+          roadmapMetadata.suggested_domain
+        )
+        if (result.success) {
+          window.dispatchEvent(
+            new CustomEvent('roadmapChanged', { detail: { goal: goalText } })
+          )
+          await loadSavedRoadmaps()
+          alert(`Roadmap saved from chat: ${roadmapMetadata.suggested_title}`)
+        } else {
+          alert('Failed to add roadmap. Try the Roadmap page.')
+        }
+      } catch (e2) {
+        alert('Failed to add roadmap: ' + (e2.message || error.message))
+      }
     } finally {
       setIsCreatingRoadmap(false)
     }
   }
 
   return (
-    <div className="chatbot-page">
-      {/* Sidebar */}
-      <motion.div 
-        className={`chatbot-sidebar ${showSidebar ? 'open' : 'closed'}`}
-        initial={{ x: -300 }}
-        animate={{ x: showSidebar ? 0 : -300 }}
-        transition={{ duration: 0.3 }}
-      >
+    <div className="chatbot-page chatbot-page--modern">
+      {showSidebar && (
+        <button
+          type="button"
+          className="chatbot-sidebar-backdrop"
+          aria-label="Close chat history"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+
+      <aside className={`chatbot-sidebar ${showSidebar ? 'is-open' : ''}`}>
         <div className="sidebar-header">
           <button className="new-chat-btn" onClick={createNewChat}>
             <Plus size={20} />
             New Chat
           </button>
-          <button 
+          <button
             className="sidebar-toggle"
-            onClick={() => setShowSidebar(!showSidebar)}
-            title="Toggle Sidebar"
+            onClick={() => setShowSidebar(false)}
+            title="Close"
+            type="button"
           >
-            <MessageSquare size={20} />
+            <X size={20} />
           </button>
-          <button 
+          <button
             className="sidebar-toggle"
             onClick={loadChatHistory}
             title="Refresh Chat History"
+            type="button"
           >
             <RefreshCw size={20} />
           </button>
         </div>
-        
+
         <div className="chat-history">
-          {console.log('Rendering chat history:', chatHistory)}
           {chatHistory.length === 0 ? (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--neutral-500)' }}>
-              <MessageCircle size={32} style={{ marginBottom: '10px', opacity: 0.5 }} />
+            <div className="chat-history-empty">
+              <MessageCircle size={32} />
               <p>No previous chats</p>
-              <p style={{ fontSize: '0.8rem' }}>Start a new conversation!</p>
+              <p className="chat-history-empty-hint">Start a new conversation!</p>
             </div>
           ) : (
             chatHistory.map((chat) => (
-              <div 
+              <div
                 key={chat.chat_id}
                 className={`chat-item ${currentChatId === chat.chat_id ? 'active' : ''}`}
-                onClick={() => loadChat(chat.chat_id)}
+                onClick={() => {
+                  loadChat(chat.chat_id)
+                  setShowSidebar(false)
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    loadChat(chat.chat_id)
+                    setShowSidebar(false)
+                  }
+                }}
               >
                 <div className="chat-item-content">
                   <span className="chat-title">{chat.title}</span>
@@ -428,7 +604,8 @@ const Chatbot = () => {
                     {new Date(chat.last_message_at).toLocaleDateString()}
                   </span>
                 </div>
-                <button 
+                <button
+                  type="button"
                   className="delete-chat-btn"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -441,101 +618,144 @@ const Chatbot = () => {
             ))
           )}
         </div>
-      </motion.div>
+      </aside>
 
-      {/* Main Chat Area */}
       <div className="chatbot-main">
-        {/* Chat Header */}
-        <div className="chat-header">
-          <button 
-            className="sidebar-toggle-mobile"
-            onClick={() => setShowSidebar(!showSidebar)}
+        <header className="chat-topbar">
+          <button
+            type="button"
+            className="chat-topbar-menu"
+            onClick={() => setShowSidebar(true)}
+            title="Chat history"
           >
-            <MessageSquare size={20} />
+            <Menu size={22} />
           </button>
-          
-          {editingTitle ? (
-            <input
-              type="text"
-              value={currentTitle}
-              onChange={(e) => setCurrentTitle(e.target.value)}
-              onBlur={() => updateChatTitle(currentTitle)}
-              onKeyPress={(e) => e.key === 'Enter' && updateChatTitle(currentTitle)}
-              className="title-input"
-              autoFocus
-            />
-          ) : (
-            <div className="chat-title-section">
-              <h1>{currentTitle}</h1>
-              {currentChatId && (
-                <div className="title-actions">
-                  <button 
-                    className="edit-title-btn"
-                    onClick={() => setEditingTitle(true)}
-                    title="Edit Title"
-                  >
-                    <Edit3 size={16} />
-                  </button>
-                  <button 
-                    className="create-roadmap-btn"
-                    onClick={handleShowCreateRoadmapModal}
-                    title="Create Roadmap from Chat"
-                  >
-                    <BookOpen size={16} />
-                    Create Roadmap
-                  </button>
+          {messages.length > 0 && (
+            <div className="chat-topbar-center">
+              {editingTitle ? (
+                <input
+                  type="text"
+                  value={currentTitle}
+                  onChange={(e) => setCurrentTitle(e.target.value)}
+                  onBlur={() => updateChatTitle(currentTitle)}
+                  onKeyDown={(e) => e.key === 'Enter' && updateChatTitle(currentTitle)}
+                  className="title-input title-input--compact"
+                  autoFocus
+                />
+              ) : (
+                <div className="chat-title-section chat-title-section--compact">
+                  <h1 className="chat-thread-title">{currentTitle}</h1>
+                  {currentChatId && (
+                    <div className="title-actions">
+                      <button
+                        type="button"
+                        className="edit-title-btn"
+                        onClick={() => setEditingTitle(true)}
+                        title="Edit Title"
+                      >
+                        <Edit3 size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="create-roadmap-btn"
+                        onClick={handleShowCreateRoadmapModal}
+                        title="Create Roadmap from Chat"
+                      >
+                        <BookOpen size={16} />
+                        <span className="create-roadmap-label">Roadmap</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-        </div>
+          <div className="chat-topbar-spacer" />
+        </header>
 
-        {/* Chat Messages */}
-        <div className="chat-container">
+        <div className={`chat-container ${messages.length === 0 ? 'chat-container--hero' : 'chat-container--thread'}`}>
           {messages.length === 0 ? (
-            <>
-              <motion.div 
-                className="chatbot-welcome"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
+            <div className="chat-hero">
+              <motion.div
+                className="hero-announcement"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
               >
-                <div className="chatbot-icon">
-                  <MessageCircle size={48} />
-                </div>
-                <div className="welcome-text">
-                  <h2>Hello! I'm your AI Career Assistant</h2>
-                  <p>I'm here to help you with career guidance, skill assessment, project ideas, and more. Ask me anything!</p>
+                <Sparkles size={14} aria-hidden />
+                Introducing PathWise AI
+              </motion.div>
+              <motion.h1
+                className="hero-headline"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.05 }}
+              >
+                What will you <em className="hero-accent">learn</em> today?
+              </motion.h1>
+              <motion.p
+                className="hero-sub"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+              >
+                Shape your career and learning path by chatting with AI — roadmaps, skills, and next steps in one place.
+              </motion.p>
+
+              <motion.div
+                className="hero-composer-block"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.15 }}
+              >
+                {renderComposer('hero')}
+                <p className="import-label">or continue from</p>
+                <div className="import-pills">
+                  <a
+                    className="import-pill"
+                    href="https://www.figma.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span className="import-pill-icon import-pill-icon--figma" aria-hidden />
+                    Figma
+                  </a>
+                  <a
+                    className="import-pill import-pill--github"
+                    href="https://github.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Github size={16} strokeWidth={2} aria-hidden />
+                    GitHub
+                  </a>
+                  <Link to="/roadmap" className="import-pill import-pill--internal">
+                    Roadmap
+                  </Link>
                 </div>
               </motion.div>
 
-              <motion.div 
-                className="suggested-prompts"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+              <motion.div
+                className="suggested-prompts suggested-prompts--chips"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35 }}
               >
-                <h3>Suggested Questions</h3>
-                <div className="prompts-grid">
-                  {suggestedPrompts.map((prompt, index) => (
-                    <motion.button
+                <h3 className="suggested-prompts-label">Try asking</h3>
+                <div className="prompt-chips">
+                  {suggestedPrompts.map((prompt) => (
+                    <button
                       key={prompt.id}
-                      className="prompt-card"
-                      style={{ '--prompt-color': prompt.color }}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.6 + index * 0.1 }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      className="prompt-chip-btn"
                       onClick={() => handlePromptClick(prompt)}
                     >
-                      <h4>{prompt.title}</h4>
-                      <p>{prompt.description}</p>
-                    </motion.button>
+                      {prompt.title}
+                    </button>
                   ))}
                 </div>
               </motion.div>
-            </>
+            </div>
           ) : (
             <div className="chat-messages">
               <AnimatePresence>
@@ -568,7 +788,7 @@ const Chatbot = () => {
                         <div className="roadmap-suggestion">
                           <div className="roadmap-suggestion-header">
                             <MapPin size={16} />
-                            <span>This looks like a learning roadmap request!</span>
+                            <span>Add this topic to your learning roadmap?</span>
                           </div>
                           <div className="roadmap-suggestion-content">
                             <p><strong>Suggested Title:</strong> {message.roadmap_metadata.suggested_title}</p>
@@ -576,9 +796,10 @@ const Chatbot = () => {
                             <button 
                               className="add-to-roadmap-btn"
                               onClick={() => handleQuickAddToRoadmap(message.roadmap_metadata)}
+                              disabled={isCreatingRoadmap}
                             >
                               <PlusCircle size={16} />
-                              Add to My Roadmaps
+                              Add to Roadmap
                             </button>
                           </div>
                         </div>
@@ -664,33 +885,9 @@ const Chatbot = () => {
             </div>
           )}
 
-          {/* Chat Input */}
-          <motion.div 
-            className="chat-input"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            <div className="input-container">
-              <input 
-                ref={inputRef}
-                type="text" 
-                placeholder={isServiceAvailable ? "Ask me anything..." : "Service unavailable - please try again later"}
-                className="chat-input-field"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={!isServiceAvailable || isLoading}
-              />
-              <button 
-                className="send-button"
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isLoading || !isServiceAvailable}
-              >
-                {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-              </button>
-            </div>
-          </motion.div>
+          {messages.length > 0 && (
+            <div className="chat-composer-sticky-wrap">{renderComposer('sticky')}</div>
+          )}
         </div>
       </div>
 
@@ -845,7 +1042,7 @@ const Chatbot = () => {
               <button 
                 className="roadmap-modal-btn primary"
                 onClick={handleCreateRoadmapFromChat}
-                disabled={isCreatingRoadmap || !roadmapTitle.trim() || !roadmapGoal.trim()}
+                disabled={isCreatingRoadmap || !roadmapGoal.trim()}
               >
                 {isCreatingRoadmap ? (
                   <>

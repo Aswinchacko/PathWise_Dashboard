@@ -2,6 +2,24 @@ import { apiUrl } from '../config/apiBase'
 
 const API_BASE_URL = apiUrl('/api/subscription')
 
+function parseJsonSafe(text) {
+  if (!text || !String(text).trim()) return {}
+  try {
+    return JSON.parse(text)
+  } catch {
+    return {}
+  }
+}
+
+function extractErrorDetail(data) {
+  if (!data || typeof data !== 'object') return null
+  const d = data.detail
+  if (typeof d === 'string') return d
+  if (Array.isArray(d))
+    return d.map((x) => (typeof x === 'object' && x?.msg ? x.msg : JSON.stringify(x))).join('; ')
+  return data.message || null
+}
+
 class SubscriptionService {
   async getPlans() {
     try {
@@ -54,6 +72,13 @@ class SubscriptionService {
   /** Create PayPal order (plan = plan id string or { id }) */
   async createOrder(userId, plan, prefill = {}) {
     const planId = typeof plan === 'string' ? plan : plan?.id
+    const uid = userId != null ? String(userId).trim() : ''
+    if (!uid) {
+      return { success: false, error: 'Not signed in (missing user id)' }
+    }
+    if (!planId || !String(planId).trim()) {
+      return { success: false, error: 'Invalid plan' }
+    }
     try {
       const response = await fetch(`${API_BASE_URL}/create-order`, {
         method: 'POST',
@@ -61,18 +86,20 @@ class SubscriptionService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: userId,
-          plan: planId,
+          user_id: uid,
+          plan: String(planId).trim(),
           ...prefill,
         }),
       })
 
-      const data = await response.json()
+      const data = parseJsonSafe(await response.text())
 
       if (response.ok) {
         return { success: true, orderData: data }
-      } else {
-        return { success: false, error: data.detail || 'Failed to create order' }
+      }
+      return {
+        success: false,
+        error: extractErrorDetail(data) || `Failed to create order (HTTP ${response.status})`,
       }
     } catch (error) {
       console.error('Error creating order:', error)
@@ -84,9 +111,12 @@ class SubscriptionService {
   async getPaymentConfig() {
     try {
       const response = await fetch(`${API_BASE_URL}/config`)
-      const data = await response.json()
+      const data = parseJsonSafe(await response.text())
       if (!response.ok) {
-        return { success: false, error: data.detail || 'Failed to load payment config' }
+        return {
+          success: false,
+          error: extractErrorDetail(data) || `Failed to load payment config (HTTP ${response.status})`,
+        }
       }
       return {
         success: true,
@@ -111,12 +141,14 @@ class SubscriptionService {
         body: JSON.stringify(payload),
       })
 
-      const data = await response.json()
+      const data = parseJsonSafe(await response.text())
 
       if (response.ok) {
         return { success: true, data }
-      } else {
-        return { success: false, error: data.detail || 'Failed to capture payment' }
+      }
+      return {
+        success: false,
+        error: extractErrorDetail(data) || `Failed to capture payment (HTTP ${response.status})`,
       }
     } catch (error) {
       console.error('Error capturing payment:', error)

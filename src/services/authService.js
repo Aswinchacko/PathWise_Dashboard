@@ -1,6 +1,6 @@
-import { apiUrl } from '../config/apiBase'
+import { expressApiUrl } from '../config/apiBase'
 
-const API_BASE_URL = apiUrl('/api/auth')
+const API_BASE_URL = expressApiUrl('/api/auth')
 
 /** Avoid `Unexpected end of JSON input` when proxy returns an empty body */
 async function parseAuthJson(response) {
@@ -14,6 +14,13 @@ async function parseAuthJson(response) {
   try {
     return JSON.parse(text)
   } catch {
+    if (response.status === 404) {
+      throw new Error(
+        'Auth API 404 — the request did not reach auth_back. Set VITE_EXPRESS_PUBLIC_ORIGIN on Vercel ' +
+          `to your Express origin (e.g. https://api.yourdomain.com or http://YOUR_IP:5000), redeploy. ` +
+          `Do not point only VITE_PUBLIC_API_URL at roadmap (:8000) without Express; POST /api/auth/google lives on auth_back.`
+      )
+    }
     throw new Error(`Auth API returned non-JSON (HTTP ${response.status}).`)
   }
 }

@@ -1,4 +1,4 @@
-import { apiUrl } from '../config/apiBase'
+import { apiUrl, expressApiUrl } from '../config/apiBase'
 
 // Dashboard Service — all paths go through nginx (`docker compose`) or Vite `/api` proxy
 
@@ -240,7 +240,7 @@ class DashboardService {
   async getSystemStatus() {
     return this.getCachedData('system-status', async () => {
       const services = [
-        { name: 'Auth Service', url: apiUrl('/api/health') },
+        { name: 'Auth Service', url: expressApiUrl('/api/health') },
         { name: 'Roadmap API', url: apiUrl('/api/roadmap/health') },
         { name: 'Chatbot Service', url: `${apiUrl('/api/chatbot')}/health` },
         { name: 'Resume Parser', url: `${apiUrl('/api/resume')}/health` },
@@ -345,7 +345,7 @@ class DashboardService {
       throw new Error('No authentication token found')
     }
 
-    const response = await fetch(`${apiUrl('/api/admin')}/stats`, {
+    const response = await fetch(`${expressApiUrl('/api/admin')}/stats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

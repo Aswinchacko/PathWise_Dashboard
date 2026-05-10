@@ -8,6 +8,16 @@ import './Subscription.css'
 
 const PLAN_RANK = { free: 0, premium: 1, enterprise: 2 }
 
+/** Avoid truthy whitespace-only ids or raw `{ $oid }` objects from bad localStorage JSON */
+function normalizeStoredUserId(user) {
+  if (!user || typeof user !== 'object') return null
+  const raw = user._id ?? user.id
+  if (raw == null || raw === '') return null
+  if (typeof raw === 'object' && raw !== null && '$oid' in raw) return String(raw.$oid).trim() || null
+  const s = String(raw).trim()
+  return s || null
+}
+
 const TIERS = [
   {
     backendPlan: 'free',
@@ -91,9 +101,9 @@ const Subscription = () => {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
-    const uid = user._id || user.id
+    const uid = normalizeStoredUserId(user)
     setUserId(uid)
-    fetchUserSubscription(uid)
+    if (uid) fetchUserSubscription(uid)
   }, [fetchUserSubscription])
 
   const current = effectivePlan(userSubscription)

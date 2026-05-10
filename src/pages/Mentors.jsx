@@ -67,12 +67,27 @@ const Mentors = () => {
         })
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Failed to fetch mentors')
+      const rawText = await response.text()
+      let data = null
+      try {
+        data = rawText ? JSON.parse(rawText) : null
+      } catch {
+        data = null
       }
 
-      const data = await response.json()
+      if (!response.ok) {
+        const detail =
+          (data && (data.detail || data.message || data.error)) ||
+          (rawText?.trim() ? rawText.trim().slice(0, 200) : null) ||
+          `HTTP ${response.status}`
+        throw new Error(
+          typeof detail === 'string' ? detail : JSON.stringify(detail)
+        )
+      }
+
+      if (!data) {
+        throw new Error('Empty response from mentor service')
+      }
 
       if (data.success) {
         setMentors(data.mentors || [])

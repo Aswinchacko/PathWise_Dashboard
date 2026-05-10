@@ -257,7 +257,7 @@ class ResumeService {
    */
   async deleteResume(resumeId) {
     try {
-      const response = await api.delete(`/resumes/${resumeId}`)
+      const response = await api.delete(`/api/resume/resumes/${resumeId}`)
       return {
         success: response.data.success,
         message: response.data.message

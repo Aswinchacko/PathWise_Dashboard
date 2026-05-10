@@ -21,6 +21,7 @@ import LinkedInCallback from './pages/LinkedInCallback'
 import SubscriptionSuccess from './pages/SubscriptionSuccess'
 import SubscriptionCancel from './pages/SubscriptionCancel'
 import Subscription from './pages/Subscription'
+import PlanGate from './components/PlanGate/PlanGate'
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -63,7 +64,9 @@ function App() {
       <Route path="/projects" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <Projects />
+            <PlanGate feature="projects">
+              <Projects />
+            </PlanGate>
           </Layout>
         </ProtectedRoute>
       } />
@@ -71,7 +74,9 @@ function App() {
       <Route path="/mentors" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <Mentors />
+            <PlanGate feature="mentors">
+              <Mentors />
+            </PlanGate>
           </Layout>
         </ProtectedRoute>
       } />
@@ -79,7 +84,9 @@ function App() {
       <Route path="/jobs" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <Jobs />
+            <PlanGate feature="jobs">
+              <Jobs />
+            </PlanGate>
           </Layout>
         </ProtectedRoute>
       } />
@@ -87,7 +94,9 @@ function App() {
       <Route path="/micro-learning" element={
         <ProtectedRoute>
           <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <MicroLearning />
+            <PlanGate feature="micro-learning">
+              <MicroLearning />
+            </PlanGate>
           </Layout>
         </ProtectedRoute>
       } />

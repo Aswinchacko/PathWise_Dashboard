@@ -1,6 +1,6 @@
-import { apiUrl } from '../config/apiBase'
+import { expressApiUrl } from '../config/apiBase'
 
-const DISCUSSIONS_BASE = apiUrl('/api/discussions')
+const DISCUSSIONS_BASE = expressApiUrl('/api/discussions')
 
 class DiscussionService {
   async getDiscussions(category = null) {

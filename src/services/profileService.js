@@ -1,9 +1,9 @@
 import axios from 'axios'
 
 // Profile Service for managing user profile data
-import { apiUrl } from '../config/apiBase'
+import { expressApiUrl } from '../config/apiBase'
 
-const API_BASE_URL = apiUrl('/api/auth')
+const API_BASE_URL = expressApiUrl('/api/auth')
 
 const api = axios.create({
   baseURL: API_BASE_URL,

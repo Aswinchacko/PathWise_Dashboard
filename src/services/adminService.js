@@ -1,6 +1,6 @@
-import { apiUrl } from '../config/apiBase'
+import { expressApiUrl } from '../config/apiBase'
 
-const API_BASE_URL = apiUrl('/api/admin')
+const API_BASE_URL = expressApiUrl('/api/admin')
 
 class AdminService {
   // Get auth token

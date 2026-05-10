@@ -15,6 +15,21 @@ export function apiUrl(path = '/') {
   return `${base}${p}`
 }
 
+/**
+ * auth_back (Express): /api/auth, /api/admin, /api/discussions, /api/health.
+ * Set `VITE_EXPRESS_PUBLIC_ORIGIN` when that stack is on a different host than
+ * `VITE_PUBLIC_API_URL` (e.g. roadmap on :8000, Express on :5000). No trailing slash.
+ * If unset, falls back to `apiUrl()` (single nginx gateway or dev proxy).
+ */
+export function expressApiUrl(path = '/') {
+  const raw = import.meta.env.VITE_EXPRESS_PUBLIC_ORIGIN
+  const p = path.startsWith('/') ? path : `/${path}`
+  if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+    return `${String(raw).replace(/\/$/, '')}${p}`
+  }
+  return apiUrl(path)
+}
+
 /** Same as apiUrl unless `VITE_*` override is set (full origin for an external project service). */
 export function projectRecommendationUrl(path = '/') {
   const raw = import.meta.env.VITE_PROJECT_RECOMMENDATION_URL

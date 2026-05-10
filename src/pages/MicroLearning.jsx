@@ -452,7 +452,7 @@ const MicroLearning = () => {
         const hints = {
             service: {
                 title: 'Micro-learning service unavailable',
-                body: 'Could not reach micro-learning (default URL `/api/v1/microlearning` via nginx). Set VITE_MICROLEARNING_API_URL in dashboard `.env` if it runs elsewhere, ensure `microlearning-service` is up (`docker compose up`), then refresh.',
+                body: 'Nothing answered on port 8008. Start the gamified API (same port as Docker): from repo root `docker compose up microlearning-service`, or `cd gamified_micro_learning` with PORT=8008 in `.env`, then `python -m uvicorn app.main:app --host 127.0.0.1 --port 8008 --reload`. Resume-parser uses 8005 (local + docker-compose) — keep micro-learning on 8008.',
             },
             stale_roadmap: {
                 title: 'Roadmap ID not found for your account',

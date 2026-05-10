@@ -1086,7 +1086,7 @@ const Roadmap = () => {
           msg = detail.map((d) => d.msg || JSON.stringify(d)).join('; ')
         if (status === 404 && (msg === 'Not Found' || msg.includes('Not Found'))) {
           msg =
-            'Roadmap API returned 404. Restart the roadmap service (port 8000) so it runs the latest code with POST /api/roadmap/refine-topic, and confirm VITE_API_BASE_URL matches that server.'
+            'Roadmap API returned 404. Restart the roadmap service so it runs the latest code with POST /api/roadmap/refine-topic, and confirm VITE_PUBLIC_API_URL points at that server (origin including port).'
         }
         throw new Error(msg)
       }

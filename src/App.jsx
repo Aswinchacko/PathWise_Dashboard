@@ -205,38 +205,6 @@ function App() {
         </ProtectedRoute>
       } />
 
-      <Route path="/admin/analytics" element={
-        <ProtectedRoute>
-          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <AdminDashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/admin/content" element={
-        <ProtectedRoute>
-          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <AdminDashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/admin/discussions" element={
-        <ProtectedRoute>
-          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <AdminDashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/admin/reports" element={
-        <ProtectedRoute>
-          <Layout sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed}>
-            <AdminDashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-
       {/* Catch all route */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

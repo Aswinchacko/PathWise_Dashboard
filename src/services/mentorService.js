@@ -1,10 +1,12 @@
 import axios from 'axios';
+import { apiUrl, getPublicApiOrigin } from '../config/apiBase';
 
-const MENTOR_API_BASE_URL = import.meta.env.VITE_MENTOR_API_URL || 'http://localhost:8004';
+const MENTOR_ROOT =
+  import.meta.env.VITE_MENTOR_API_URL?.trim() || getPublicApiOrigin();
 
-// Create axios instance for mentor service
+// Create axios instance for mentor service (paths include full /api/mentors/... prefix)
 const mentorApi = axios.create({
-  baseURL: MENTOR_API_BASE_URL,
+  baseURL: MENTOR_ROOT,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -59,7 +61,7 @@ class MentorService {
 
   async checkMentorServiceHealth() {
     try {
-      const response = await mentorApi.get('/health');
+      const response = await mentorApi.get('/api/mentors/health');
       return response.status === 200;
     } catch (error) {
       console.error('Mentor service health check failed:', error);
@@ -145,10 +147,10 @@ class MentorService {
       // If userId provided, fetch from roadmap service (MongoDB) - PRIMARY SOURCE
       if (userId) {
         try {
-          const roadmapApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+          const roadmapApiUrl = apiUrl('/api/roadmap');
           console.log(`🔍 Fetching roadmap from MongoDB for user: ${userId}`);
           
-          const response = await axios.get(`${roadmapApiUrl}/api/roadmap/roadmaps/user/${userId}`);
+          const response = await axios.get(`${roadmapApiUrl}/roadmaps/user/${userId}`);
           
           if (response.data.roadmaps && response.data.roadmaps.length > 0) {
             // Get the most recent roadmap (already sorted by updated_at)

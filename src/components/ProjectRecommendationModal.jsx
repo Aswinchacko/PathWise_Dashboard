@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
-import { 
-  X, 
-  ExternalLink, 
-  Clock, 
-  Star, 
-  Code, 
-  BookOpen,
+import {
+  X,
+  ExternalLink,
+  Clock,
+  Star,
+  Code,
+  Sparkles,
   Loader2,
   AlertCircle,
   CheckCircle2,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
 } from 'lucide-react'
 import recommendationService from '../services/recommendationService'
 import './ProjectRecommendationModal.css'
@@ -91,8 +91,8 @@ const ProjectRecommendationModal = ({
       <div className="project-modal">
         <div className="project-modal-header">
           <div className="project-modal-title">
-            <BookOpen size={20} />
-            <h2>Project Recommendations</h2>
+            <Sparkles size={22} aria-hidden />
+            <h2>Project recommendations</h2>
           </div>
           <button className="project-modal-close" onClick={onClose}>
             <X size={20} />
@@ -238,7 +238,7 @@ const ProjectRecommendationModal = ({
           {/* No Recommendations */}
           {!isLoading && !error && recommendations.length === 0 && (
             <div className="no-recommendations">
-              <BookOpen size={48} />
+              <Sparkles size={48} strokeWidth={1.25} aria-hidden />
               <h3>No projects found</h3>
               <p>Try adjusting the difficulty filter or completing more topics.</p>
             </div>

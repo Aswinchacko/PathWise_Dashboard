@@ -1,0 +1,43 @@
+.paypal-buttons-wrap {
+  min-height: 48px;
+}
+
+.paypal-loading {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: #52525b;
+}
+
+.paypal-button-host {
+  max-width: 320px;
+}
+
+.paypal-mock-panel {
+  padding: 0.5rem 0;
+}
+
+.paypal-mock-hint {
+  font-size: 0.8rem;
+  color: #71717a;
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.paypal-mock-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d4d4d8;
+  background: #18181b;
+  color: #fafafa;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.paypal-mock-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}

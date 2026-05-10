@@ -18,14 +18,21 @@ import {
   RefreshCw,
   X,
   Trash2,
+  PartyPopper,
+  FolderKanban,
 } from 'lucide-react'
 import './Roadmap.css'
-import roadmapService from '../services/roadmapService'
+import roadmapService, {
+  formatRoadmapApiError,
+  validateRoadmapGoal,
+} from '../services/roadmapService'
 import authService from '../services/authService'
 import recommendationService from '../services/recommendationService'
 import mentorService from '../services/mentorService'
 import ConfirmationModal from '../components/ConfirmationModal'
 import TopicRefineModal from '../components/TopicRefineModal'
+import RoadmapToast from '../components/RoadmapToast'
+import { projectRecommendationUrl } from '../config/apiBase'
 
 /** Remember which roadmap to show when the user returns to this page */
 const ACTIVE_ROADMAP_ID_KEY = 'pathwise.activeRoadmapId'
@@ -389,6 +396,8 @@ const Roadmap = () => {
   // Phase completion notification states
   const [phaseNotification, setPhaseNotification] = useState(null)
   const [phaseRecommendations, setPhaseRecommendations] = useState([])
+  const [saveToast, setSaveToast] = useState(null)
+  const [savingProjectKey, setSavingProjectKey] = useState(null)
   
   // Confirmation modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -405,6 +414,12 @@ const Roadmap = () => {
     const t = setTimeout(() => setRefineSuccessToast(null), 4500)
     return () => clearTimeout(t)
   }, [refineSuccessToast])
+
+  useEffect(() => {
+    if (!saveToast) return
+    const t = setTimeout(() => setSaveToast(null), 5200)
+    return () => clearTimeout(t)
+  }, [saveToast])
 
   // Load user and domains on component mount
   useEffect(() => {
@@ -514,8 +529,9 @@ const Roadmap = () => {
 
 
   const generateRoadmap = async () => {
-    if (!goal.trim()) {
-      setError('Please enter a goal')
+    const goalErr = validateRoadmapGoal(goal)
+    if (goalErr) {
+      setError(goalErr)
       return
     }
 
@@ -564,7 +580,6 @@ const Roadmap = () => {
       
       // Clear completion state for new roadmap
       setCompletedIds(new Set())
-      setCompletedTopics([])
       localStorage.removeItem('roadmap.completed')
       
       // Refresh saved roadmaps immediately and with delay
@@ -583,8 +598,13 @@ const Roadmap = () => {
         }, 2000)
       }
     } catch (error) {
-      setError('Failed to generate roadmap. Please try again.')
-      console.error('Error generating roadmap:', error)
+      const detail = formatRoadmapApiError(error)
+      setError(
+        detail
+          ? `${detail}${error?.response?.status ? ` (HTTP ${error.response.status})` : ''}`
+          : 'Failed to generate roadmap. Please try again.',
+      )
+      console.error('Error generating roadmap:', error?.response?.data || error)
     } finally {
       setIsLoading(false)
     }
@@ -630,7 +650,6 @@ const Roadmap = () => {
 
     // Clear completion state when loading a different roadmap
     setCompletedIds(new Set())
-    setCompletedTopics([])
     localStorage.removeItem('roadmap.completed')
   }
 
@@ -653,7 +672,10 @@ const Roadmap = () => {
       setRoadmapToDelete(null)
     } catch (error) {
       console.error('Error deleting roadmap:', error)
-      alert('Failed to delete roadmap. Please try again.')
+      setSaveToast({
+        type: 'error',
+        message: 'Failed to delete roadmap. Please try again.',
+      })
     } finally {
       setIsDeleting(false)
     }
@@ -803,7 +825,7 @@ const Roadmap = () => {
     try {
       console.log(`🎉 Phase completed: "${phaseName}" - Getting phase-based recommendations...`)
       
-      const response = await fetch('http://localhost:5003/api/recommend/phase', {
+      const response = await fetch(`${projectRecommendationUrl('/api/recommend/phase')}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -847,37 +869,46 @@ const Roadmap = () => {
   }, [recommendationServiceAvailable, phaseNotification])
 
   const handleProjectClick = useCallback(async (project) => {
+    const key = project.project_id ?? project.id ?? project.title ?? 'project'
     try {
       console.log(`🎯 Project clicked: ${project.title}`)
-      
-      // Save project to database
-      const response = await fetch('http://localhost:5003/api/projects/save', {
+      setSavingProjectKey(key)
+
+      const response = await fetch(`${projectRecommendationUrl('/api/projects/save')}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(project)
+        body: JSON.stringify(project),
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         console.log(`✅ Project saved to database with ID: ${data.id}`)
-        
-        // Show success message
-        alert(`✅ Project "${project.title}" has been saved to your projects!`)
-        
-        // Close notification
+        setSaveToast({
+          type: 'success',
+          message: `"${project.title}" was added to your projects.`,
+        })
         setPhaseNotification(null)
-        
-        // Optionally redirect to projects page
-        // window.location.href = '/projects'
       } else {
         console.error('Failed to save project:', response.statusText)
-        alert(`❌ Failed to save project. Please try again.`)
+        setSaveToast({
+          type: 'error',
+          message: 'Could not save this project. Check that the projects service is running.',
+        })
       }
     } catch (error) {
       console.error('Error saving project:', error)
-      alert(`❌ Error saving project: ${error.message}`)
+      const isNetwork =
+        error?.message === 'Failed to fetch' || error?.name === 'TypeError'
+      setSaveToast({
+        type: 'error',
+        message: isNetwork
+          ? `Cannot reach projects API (${projectRecommendationUrl('/api/projects')}). Start docker compose / nginx and try again.`
+          : `Something went wrong: ${error.message}`,
+      })
+    } finally {
+      setSavingProjectKey(null)
     }
   }, [])
 
@@ -887,28 +918,41 @@ const Roadmap = () => {
     // Save all projects to database
     const saveAllProjects = async () => {
       try {
-        const savePromises = phaseRecommendations.map(project => 
-          fetch('http://localhost:5003/api/projects/save', {
+        const savePromises = phaseRecommendations.map((project) =>
+          fetch(`${projectRecommendationUrl('/api/projects/save')}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(project)
-          })
+            body: JSON.stringify(project),
+          }),
         )
-        
+
         const responses = await Promise.all(savePromises)
-        const results = await Promise.all(responses.map(r => r.json()))
-        
-        console.log(`✅ All ${results.length} projects saved to database`)
-        alert(`✅ All ${results.length} projects have been saved to your projects!`)
-        
-        // Close notification
-        setPhaseNotification(null)
-        
-        // Optionally redirect to projects page
-        // window.location.href = '/projects'
+        const ok = responses.filter((r) => r.ok).length
+        const failed = responses.length - ok
+
+        if (failed === 0) {
+          await Promise.all(responses.map((r) => r.json()))
+          console.log(`✅ All ${ok} projects saved to database`)
+          setSaveToast({
+            type: 'success',
+            message: `Saved ${ok} recommended projects to your list.`,
+          })
+          setPhaseNotification(null)
+        } else {
+          setSaveToast({
+            type: 'error',
+            message: `${ok} saved, ${failed} failed. Check the projects service and try again.`,
+          })
+        }
       } catch (error) {
         console.error('Error saving all projects:', error)
-        alert(`❌ Error saving projects: ${error.message}`)
+        setSaveToast({
+          type: 'error',
+          message:
+            error?.message === 'Failed to fetch'
+              ? `Cannot reach projects API (${projectRecommendationUrl('/api/projects')}).`
+              : `Error saving projects: ${error.message}`,
+        })
       }
     }
     
@@ -1076,6 +1120,8 @@ const Roadmap = () => {
           document.body
         )}
 
+      <RoadmapToast toast={saveToast} onDismiss={() => setSaveToast(null)} />
+
       {/* Simple Header */}
       <div className="simple-header">
         <h1>Career Roadmap Generator</h1>
@@ -1099,45 +1145,69 @@ const Roadmap = () => {
         </div>
       </div>
 
-      {/* Phase Completion Notification */}
+      {/* Phase completion — project picks (modern card, full titles) */}
       {phaseNotification && (
-        <div className="phase-notification">
-          <div className="notification-content">
-            <div className="notification-icon">🎉</div>
-            <div className="notification-text">
-              <h4>Phase Completed!</h4>
-              <p>
-                <strong>{phaseNotification.phase}</strong> completed! 
-                {phaseRecommendations.length} new projects recommended based on your progress.
-              </p>
-              <div className="notification-projects">
-                {phaseRecommendations.slice(0, 2).map((project, index) => (
-                  <button 
-                    key={index} 
-                    className="project-preview clickable"
-                    onClick={() => handleProjectClick(project)}
-                    title="Click to view project details"
-                  >
-                    {project.title}
-                  </button>
-                ))}
-                {phaseRecommendations.length > 2 && (
-                  <button 
-                    className="more-projects clickable"
-                    onClick={() => handleViewAllProjects()}
-                    title="View all recommended projects"
-                  >
-                    +{phaseRecommendations.length - 2} more
-                  </button>
-                )}
+        <div className="phase-notification phase-notification--modern">
+          <div className="phase-notification__shell">
+            <button
+              type="button"
+              className="phase-notification__close"
+              onClick={() => setPhaseNotification(null)}
+              aria-label="Dismiss recommendations"
+            >
+              <X size={18} strokeWidth={2.25} />
+            </button>
+            <div className="phase-notification__accent" aria-hidden />
+            <div className="phase-notification__header">
+              <div className="phase-notification__icon-wrap">
+                <PartyPopper size={26} strokeWidth={2} aria-hidden />
+              </div>
+              <div className="phase-notification__headlines">
+                <span className="phase-notification__eyebrow">Milestone</span>
+                <h4 className="phase-notification__title">Phase complete</h4>
+                <p className="phase-notification__subtitle">
+                  <strong>{phaseNotification.phase}</strong> is done. We found{' '}
+                  {phaseRecommendations.length} project
+                  {phaseRecommendations.length === 1 ? '' : 's'} for you — tap to save to
+                  your list.
+                </p>
               </div>
             </div>
-            <button 
-              className="notification-close"
-              onClick={() => setPhaseNotification(null)}
-            >
-              ×
-            </button>
+            <div className="phase-notification__projects" role="list">
+              {phaseRecommendations.slice(0, 2).map((project, index) => {
+                const pk = project.project_id ?? project.id ?? project.title ?? index
+                const busy = savingProjectKey === pk
+                return (
+                  <button
+                    key={String(pk)}
+                    type="button"
+                    role="listitem"
+                    className="phase-notification__project-btn"
+                    onClick={() => handleProjectClick(project)}
+                    disabled={busy}
+                  >
+                    {busy ? (
+                      <Loader2 size={18} className="spinning" aria-hidden />
+                    ) : (
+                      <FolderKanban size={18} strokeWidth={2} aria-hidden />
+                    )}
+                    <span className="phase-notification__project-title">{project.title}</span>
+                  </button>
+                )
+              })}
+              {phaseRecommendations.length > 2 && (
+                <button
+                  type="button"
+                  className="phase-notification__project-btn phase-notification__project-btn--secondary"
+                  onClick={() => handleViewAllProjects()}
+                >
+                  <Sparkles size={18} aria-hidden />
+                  <span>
+                    Save all {phaseRecommendations.length} recommendations
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1381,10 +1451,10 @@ const Roadmap = () => {
               )}
               
               <div className="input-group">
-                <label>Career Goal</label>
+                <label>Goal</label>
                 <input
                   type="text"
-                  placeholder="e.g., Python Developer, Full Stack Developer, AI Engineer"
+                  placeholder="e.g. Marathon in 6 months, conversational Japanese, AWS Solutions Architect, sourdough baking"
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
                   onKeyPress={(e) => {
@@ -1394,7 +1464,7 @@ const Roadmap = () => {
                   }}
                 />
                 <small style={{ color: '#64748b', marginTop: '0.5rem', display: 'block' }}>
-                  Just enter your career goal - our AI will find the perfect roadmap for you!
+                  Any domain — career, hobby, sport, language, craft, certification. Groq builds a tailored path.
                 </small>
               </div>
             </div>

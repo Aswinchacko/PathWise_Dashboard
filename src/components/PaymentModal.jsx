@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CreditCard, Lock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import subscriptionService from '../services/subscriptionService'
 import './PaymentModal.css'
 
 const PaymentModal = ({ isOpen, onClose, plan, userId, onSuccess }) => {
@@ -108,28 +109,22 @@ const PaymentModal = ({ isOpen, onClose, plan, userId, onSuccess }) => {
     setStep('processing')
 
     try {
-      const response = await fetch('http://localhost:8006/api/subscription/process-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          plan: plan.id,
-          payment_method: 'card',
-          card_number: formData.cardNumber.replace(/\s/g, ''),
-          expiry_month: formData.expiryMonth,
-          expiry_year: formData.expiryYear,
-          cvv: formData.cvv,
-          cardholder_name: formData.cardholderName,
-          email: formData.email,
-          phone: formData.phone
-        })
+      const proc = await subscriptionService.processPayment({
+        user_id: userId,
+        plan: plan.id,
+        payment_method: 'card',
+        card_number: formData.cardNumber.replace(/\s/g, ''),
+        expiry_month: formData.expiryMonth,
+        expiry_year: formData.expiryYear,
+        cvv: formData.cvv,
+        cardholder_name: formData.cardholderName,
+        email: formData.email,
+        phone: formData.phone,
       })
 
-      const result = await response.json()
+      const result = proc.data || {}
 
-      if (response.ok) {
+      if (proc.success) {
         setStep('success')
         setTimeout(() => {
           onSuccess(result)

@@ -1,13 +1,57 @@
 import axios from 'axios';
+import { getPublicApiOrigin, apiUrl } from '../config/apiBase';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = apiUrl('/api/roadmap');
+
+/** FastAPI often puts errors in `detail` (string or validation array). */
+export function formatRoadmapApiError(error) {
+  const d = error?.response?.data?.detail;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) {
+    return d
+      .map((x) => (typeof x === 'object' && x?.msg ? x.msg : JSON.stringify(x)))
+      .join(' ');
+  }
+  const msg = error?.message || '';
+  if (error?.code === 'ECONNREFUSED' || msg === 'Network Error') {
+    return `Cannot reach roadmap API (${API_BASE_URL}). Start docker compose (nginx + roadmap-api) or set VITE_PUBLIC_API_URL.`;
+  }
+  return msg || 'Request failed';
+}
+
+/**
+ * Client-side guardrails (API enforces the same rules).
+ * @param {string} goal
+ * @returns {string|null} Error message, or null if valid
+ */
+export function validateRoadmapGoal(goal) {
+  const t = String(goal ?? '').trim();
+  if (!t) return 'Please enter a goal.';
+  if (t.length < 3) return 'Goal is too short — use at least 3 characters.';
+  if (t.length > 400) return 'Goal is too long — keep it under 400 characters.';
+  if (/^\d+$/.test(t)) return 'Use words to describe what you want to learn or achieve, not only numbers.';
+  if (!/\p{L}/u.test(t)) {
+    return 'Include at least one letter (describe your goal in any language you use).';
+  }
+  const noSpace = t.replace(/\s/g, '');
+  if (noSpace.length >= 6) {
+    const counts = {};
+    for (const c of noSpace) counts[c] = (counts[c] || 0) + 1;
+    const maxCount = Math.max(...Object.values(counts));
+    if (maxCount / noSpace.length > 0.85) {
+      return 'That looks like random repetition. Enter a short phrase or sentence for your goal.';
+    }
+  }
+  return null;
+}
 
 // Create axios instance
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getPublicApiOrigin(),
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 120000,
 });
 
 class RoadmapService {
@@ -138,7 +182,45 @@ class RoadmapService {
       return [];
     }
 
-    // Create enhanced root node with metadata
+    const rawSteps = Array.isArray(roadmap.steps) ? roadmap.steps : [];
+    const children = rawSteps
+      .map((step, stepIndex) => {
+        const title =
+          step && step.category != null ? String(step.category).trim() : '';
+        if (!title) return null;
+
+        let skillList = step.skills;
+        if (!Array.isArray(skillList)) {
+          skillList =
+            typeof skillList === 'string'
+              ? skillList
+                  .split(/[;|]/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
+        }
+        const skills = skillList
+          .map((s) => (s == null ? '' : String(s).trim()))
+          .filter(Boolean);
+        const safeSkills = skills.length ? skills : [`Complete core activities: ${title}`];
+
+        return {
+          id: `step_${stepIndex}`,
+          title,
+          icon: this.getIconForCategory(title),
+          color: this.getColorForLevel(stepIndex + 1),
+          children: safeSkills.map((skill, skillIndex) => ({
+            id: `step_${stepIndex}_skill_${skillIndex}`,
+            title: skill,
+            icon: this.getIconForSkill(skill),
+            estimatedTime: this.estimateSkillTime(skill),
+          })),
+        };
+      })
+      .filter(Boolean);
+
+    if (!children.length) return [];
+
     const rootNode = {
       id: 'roadmap_root',
       title: roadmap.goal || 'Learning Roadmap',
@@ -148,20 +230,9 @@ class RoadmapService {
         prerequisites: roadmap.prerequisites || '',
         learningOutcomes: roadmap.learning_outcomes || '',
         matchScore: roadmap.match_score || 0,
-        domain: roadmap.domain
+        domain: roadmap.domain,
       },
-      children: roadmap.steps.map((step, stepIndex) => ({
-        id: `step_${stepIndex}`,
-        title: step.category,
-        icon: this.getIconForCategory(step.category),
-        color: this.getColorForLevel(stepIndex + 1),
-        children: step.skills.map((skill, skillIndex) => ({
-          id: `step_${stepIndex}_skill_${skillIndex}`,
-          title: skill,
-          icon: this.getIconForSkill(skill),
-          estimatedTime: this.estimateSkillTime(skill)
-        }))
-      }))
+      children,
     };
 
     return [rootNode];
@@ -169,7 +240,7 @@ class RoadmapService {
 
   // Estimate time for individual skills
   estimateSkillTime(skill) {
-    const skillLower = skill.toLowerCase();
+    const skillLower = String(skill || '').toLowerCase();
     
     // Basic skills - shorter time
     if (skillLower.includes('basic') || skillLower.includes('introduction') || skillLower.includes('fundamentals')) {
@@ -203,6 +274,7 @@ class RoadmapService {
   }
 
   getIconForCategory(category) {
+    const cat = String(category || '');
     // Map categories to appropriate icons
     const iconMap = {
       'Foundations': 'BookOpen',
@@ -223,7 +295,7 @@ class RoadmapService {
     };
 
     for (const [key, icon] of Object.entries(iconMap)) {
-      if (category.toLowerCase().includes(key.toLowerCase())) {
+      if (cat.toLowerCase().includes(key.toLowerCase())) {
         return icon;
       }
     }
@@ -253,7 +325,7 @@ class RoadmapService {
       'ai': 'Cpu'
     };
 
-    const skillLower = skill.toLowerCase();
+    const skillLower = String(skill || '').toLowerCase();
     for (const [key, icon] of Object.entries(skillMap)) {
       if (skillLower.includes(key)) {
         return icon;

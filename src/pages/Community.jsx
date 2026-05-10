@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Sparkles, Users } from 'lucide-react';
 import DiscussionList from '../components/community/DiscussionList';
 import CreateDiscussionModal from '../components/community/CreateDiscussionModal';
 import DiscussionDetailModal from '../components/community/DiscussionDetailModal';
@@ -104,22 +103,35 @@ const Community = () => {
     }
   };
 
+  const handleShareDiscussion = async (discussionId) => {
+    const text = `${window.location.origin}/community#post-${discussionId}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setSuccessMessage('Link copied — share it anywhere.');
+      setShowSuccessModal(true);
+    } catch {
+      setSuccessMessage('Could not copy link.');
+      setShowSuccessModal(true);
+    }
+  };
+
   const handleLikeDiscussion = async (discussionId) => {
+    const sid = String(discussionId);
+    const fromList = discussions.find((d) => String(d.id) === sid);
+    const fromModal =
+      selectedDiscussion && String(selectedDiscussion.id) === sid ? selectedDiscussion : null;
+    if (fromList?.likedByMe || fromModal?.likedByMe) return;
+
     try {
       const result = await discussionService.likeDiscussion(discussionId);
 
-      // Update discussions list
-      const updatedDiscussions = discussions.map(d =>
-        d.id === discussionId ? { ...d, likes: result.likes } : d
+      const patch = { likes: result.likes, likedByMe: true };
+      setDiscussions((prev) =>
+        prev.map((d) => (String(d.id) === sid ? { ...d, ...patch } : d))
       );
-      setDiscussions(updatedDiscussions);
 
-      // Update selected discussion in modal
-      if (selectedDiscussion && selectedDiscussion.id === discussionId) {
-        setSelectedDiscussion({
-          ...selectedDiscussion,
-          likes: result.likes
-        });
+      if (selectedDiscussion && String(selectedDiscussion.id) === sid) {
+        setSelectedDiscussion({ ...selectedDiscussion, ...patch });
       }
     } catch (err) {
       setError('Failed to like discussion');
@@ -172,24 +184,28 @@ const Community = () => {
         />
 
         <header className="community-header">
-          <div className="container">
-            <div>
-              <h1>Community Hub</h1>
-              <p>Join the conversation, share knowledge, and grow together.</p>
+          <div className="community-header__inner">
+            <div className="community-header__intro">
+              <p className="community-header__eyebrow">PathWise network</p>
+              <h1>Community</h1>
+              <p className="community-header__tagline">
+                Questions, threads, and peer support — one calm, focused feed.
+              </p>
             </div>
             <div className="header-actions">
               <div className="search-bar">
-                <Search size={16} />
+                <Search size={18} strokeWidth={1.75} />
                 <input
-                  type="text"
-                  placeholder="Search discussions..."
+                  type="search"
+                  placeholder="Search posts, topics, people…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  autoComplete="off"
                 />
               </div>
-              <button className="create-discussion-btn" onClick={() => setShowCreateForm(true)}>
-                <Plus size={16} />
-                Ask Question
+              <button type="button" className="create-discussion-btn" onClick={() => setShowCreateForm(true)}>
+                <Plus size={18} strokeWidth={2} />
+                New post
               </button>
             </div>
           </div>
@@ -205,23 +221,44 @@ const Community = () => {
           <div className="community-main">
             {loading ? (
               <div className="loading-state">
-                <div className="spinner"></div>
-                <p>Loading discussions...</p>
+                <div className="spinner" />
+                <p>Loading your feed…</p>
               </div>
             ) : error ? (
               <div className="error-state">
                 <p>{error}</p>
-                <button onClick={fetchDiscussions} className="retry-btn">
-                  Try Again
+                <button type="button" onClick={fetchDiscussions} className="retry-btn">
+                  Try again
                 </button>
               </div>
             ) : (
               <DiscussionList
                 discussions={filteredDiscussions}
                 setSelectedDiscussion={setSelectedDiscussion}
+                onLikeDiscussion={handleLikeDiscussion}
+                onShareDiscussion={handleShareDiscussion}
               />
             )}
           </div>
+
+          <aside className="community-aside" aria-label="Community highlights">
+            <div className="aside-card">
+              <div className="aside-card__icon">
+                <Sparkles size={20} strokeWidth={1.75} />
+              </div>
+              <h3>Quality over noise</h3>
+              <p>
+                Thoughtful questions get better answers. Add context and what you have already tried.
+              </p>
+            </div>
+            <div className="aside-card aside-card--muted">
+              <div className="aside-card__icon aside-card__icon--soft">
+                <Users size={20} strokeWidth={1.75} />
+              </div>
+              <h3>Grow with peers</h3>
+              <p>Like posts you find useful — it helps others discover strong threads.</p>
+            </div>
+          </aside>
         </div>
       </div>
     </AuthChecker>

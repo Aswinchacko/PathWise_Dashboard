@@ -14,15 +14,15 @@ import {
   MapPin,
   PlusCircle,
   CheckCircle,
+  AlertCircle,
   X,
   BookOpen,
   Save,
   Zap,
   Lightbulb,
-  ChevronDown,
   Menu,
   Sparkles,
-  Github,
+  Info,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -93,37 +93,42 @@ const Chatbot = () => {
   const [userId, setUserId] = useState(() => resolveChatbotUserId())
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const roadmapNoticeTimerRef = useRef(null)
+  const [roadmapNotice, setRoadmapNotice] = useState(null)
 
-  const suggestedPrompts = [
-    {
-      id: 1,
-      title: 'Career Guidance',
-      description: 'Get personalized advice for your career path',
-      color: 'var(--primary-500)',
-      message: 'Help me plan my career path in technology'
-    },
-    {
-      id: 2,
-      title: 'Skill Assessment',
-      description: 'Evaluate your current skills and identify gaps',
-      color: 'var(--warning-500)',
-      message: 'How can I assess my programming skills?'
-    },
-    {
-      id: 3,
-      title: 'Project Ideas',
-      description: 'Discover project ideas based on your interests',
-      color: 'var(--success-500)',
-      message: 'Suggest some project ideas for my portfolio'
-    },
-    {
-      id: 4,
-      title: 'Create Roadmap',
-      description: 'Generate a personalized learning roadmap',
-      color: 'var(--info-500)',
-      message: 'Create a roadmap for becoming a full-stack developer'
-    },
-  ]
+  const ROADMAP_NOTICE_MS = 5000
+
+  const dismissRoadmapNotice = () => {
+    if (roadmapNoticeTimerRef.current) {
+      clearTimeout(roadmapNoticeTimerRef.current)
+      roadmapNoticeTimerRef.current = null
+    }
+    setRoadmapNotice(null)
+  }
+
+  const showRoadmapNotice = (message, variant = 'success') => {
+    if (roadmapNoticeTimerRef.current) {
+      clearTimeout(roadmapNoticeTimerRef.current)
+      roadmapNoticeTimerRef.current = null
+    }
+    setRoadmapNotice({
+      message,
+      variant,
+      id: Date.now(),
+    })
+    roadmapNoticeTimerRef.current = setTimeout(() => {
+      setRoadmapNotice(null)
+      roadmapNoticeTimerRef.current = null
+    }, ROADMAP_NOTICE_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (roadmapNoticeTimerRef.current) {
+        clearTimeout(roadmapNoticeTimerRef.current)
+      }
+    }
+  }, [])
 
   // Prefer logged-in user id so chat + roadmaps align with Roadmap page
   useEffect(() => {
@@ -144,6 +149,13 @@ const Chatbot = () => {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    if (!planMode) return
+    setShowRoadmapModal(false)
+    setCurrentRoadmap(null)
+    setShowCreateRoadmapModal(false)
+  }, [planMode])
 
   const checkServiceHealth = async () => {
     const isHealthy = await chatbotService.checkHealth()
@@ -299,10 +311,6 @@ const Chatbot = () => {
     }
   }
 
-  const handlePromptClick = (prompt) => {
-    sendMessage(prompt.message)
-  }
-
   const handleSuggestionClick = (suggestion) => {
     sendMessage(suggestion)
   }
@@ -342,15 +350,15 @@ const Chatbot = () => {
   const handleCreateRoadmapFromChat = async () => {
     const u = authService.getCurrentUser()
     if (!u?.id) {
-      alert('Sign in to save a roadmap to your Roadmap page.')
+      showRoadmapNotice('Sign in to save a roadmap to your Roadmap page.', 'error')
       return
     }
     if (!roadmapGoal.trim()) {
-      alert('Please enter a learning goal')
+      showRoadmapNotice('Please enter a learning goal', 'error')
       return
     }
     if (!currentChatId) {
-      alert('Please start a conversation first')
+      showRoadmapNotice('Please start a conversation first', 'error')
       return
     }
 
@@ -373,7 +381,7 @@ const Chatbot = () => {
       setRoadmapGoal('')
       setRoadmapDomain('')
       await loadSavedRoadmaps()
-      alert('Roadmap added — open Roadmap to view it.')
+      showRoadmapNotice('Roadmap added — open Roadmap to view it.', 'success')
     } catch (error) {
       console.error('Error creating roadmap via generator:', error)
       try {
@@ -393,12 +401,15 @@ const Chatbot = () => {
           setRoadmapGoal('')
           setRoadmapDomain('')
           await loadSavedRoadmaps()
-          alert('Roadmap saved from chat (fallback). Open Roadmap to view.')
+          showRoadmapNotice('Roadmap saved from chat (fallback). Open Roadmap to view.', 'success')
         } else {
-          alert('Failed to create roadmap')
+          showRoadmapNotice('Failed to create roadmap', 'error')
         }
       } catch (e2) {
-        alert('Failed to create roadmap: ' + (e2.message || error.message))
+        showRoadmapNotice(
+          'Failed to create roadmap: ' + (e2.message || error.message),
+          'error'
+        )
       }
     } finally {
       setIsCreatingRoadmap(false)
@@ -407,7 +418,7 @@ const Chatbot = () => {
 
   const handleShowCreateRoadmapModal = () => {
     if (!currentChatId) {
-      alert('Please start a conversation first')
+      showRoadmapNotice('Please start a conversation first', 'error')
       return
     }
     setRoadmapTitle(currentTitle)
@@ -422,6 +433,15 @@ const Chatbot = () => {
     <div
       className={`chat-composer-card ${variant === 'sticky' ? 'chat-composer-card--sticky' : ''} ${planMode ? 'chat-composer-card--plan' : ''}`}
     >
+      {planMode && (
+        <div className="plan-mode-notice" role="status">
+          <Info size={18} className="plan-mode-notice-icon" aria-hidden />
+          <p>
+            Roadmap generation from this chat isn&apos;t available in Plan mode. Turn{' '}
+            <strong>Plan</strong> off to create or add roadmaps from the conversation.
+          </p>
+        </div>
+      )}
       <textarea
         ref={inputRef}
         className="chat-composer-textarea"
@@ -449,11 +469,10 @@ const Chatbot = () => {
           >
             <Plus size={20} strokeWidth={2} />
           </button>
-          <button type="button" className="composer-model-btn" title="Assistant">
-            <Zap size={16} className="composer-model-icon" />
-            <span>PathWise AI</span>
-            <ChevronDown size={16} />
-          </button>
+          <span className="composer-model-label" title="Assistant">
+            <Zap size={16} className="composer-model-icon" aria-hidden />
+            PathWise AI
+          </span>
         </div>
         <div className="composer-toolbar-right">
           <button
@@ -482,11 +501,11 @@ const Chatbot = () => {
   const handleQuickAddToRoadmap = async (roadmapMetadata) => {
     const u = authService.getCurrentUser()
     if (!u?.id) {
-      alert('Sign in to add this to your Roadmap page.')
+      showRoadmapNotice('Sign in to add this to your Roadmap page.', 'error')
       return
     }
     if (!currentChatId) {
-      alert('Please start a conversation first')
+      showRoadmapNotice('Please start a conversation first', 'error')
       return
     }
 
@@ -509,7 +528,10 @@ const Chatbot = () => {
         })
       )
       await loadSavedRoadmaps()
-      alert(`Added to Roadmap: ${roadmapMetadata.suggested_title || goalText}`)
+      showRoadmapNotice(
+        `Added to Roadmap: ${roadmapMetadata.suggested_title || goalText}`,
+        'success'
+      )
     } catch (error) {
       console.error('Error generating roadmap from chat topic:', error)
       try {
@@ -525,12 +547,18 @@ const Chatbot = () => {
             new CustomEvent('roadmapChanged', { detail: { goal: goalText } })
           )
           await loadSavedRoadmaps()
-          alert(`Roadmap saved from chat: ${roadmapMetadata.suggested_title}`)
+          showRoadmapNotice(
+            `Roadmap saved from chat: ${roadmapMetadata.suggested_title}`,
+            'success'
+          )
         } else {
-          alert('Failed to add roadmap. Try the Roadmap page.')
+          showRoadmapNotice('Failed to add roadmap. Try the Roadmap page.', 'error')
         }
       } catch (e2) {
-        alert('Failed to add roadmap: ' + (e2.message || error.message))
+        showRoadmapNotice(
+          'Failed to add roadmap: ' + (e2.message || error.message),
+          'error'
+        )
       }
     } finally {
       setIsCreatingRoadmap(false)
@@ -655,15 +683,17 @@ const Chatbot = () => {
                       >
                         <Edit3 size={16} />
                       </button>
-                      <button
-                        type="button"
-                        className="create-roadmap-btn"
-                        onClick={handleShowCreateRoadmapModal}
-                        title="Create Roadmap from Chat"
-                      >
-                        <BookOpen size={16} />
-                        <span className="create-roadmap-label">Roadmap</span>
-                      </button>
+                      {!planMode && (
+                        <button
+                          type="button"
+                          className="create-roadmap-btn"
+                          onClick={handleShowCreateRoadmapModal}
+                          title="Create Roadmap from Chat"
+                        >
+                          <BookOpen size={16} />
+                          <span className="create-roadmap-label">Roadmap</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -709,51 +739,6 @@ const Chatbot = () => {
                 transition={{ duration: 0.45, delay: 0.15 }}
               >
                 {renderComposer('hero')}
-                <p className="import-label">or continue from</p>
-                <div className="import-pills">
-                  <a
-                    className="import-pill"
-                    href="https://www.figma.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="import-pill-icon import-pill-icon--figma" aria-hidden />
-                    Figma
-                  </a>
-                  <a
-                    className="import-pill import-pill--github"
-                    href="https://github.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Github size={16} strokeWidth={2} aria-hidden />
-                    GitHub
-                  </a>
-                  <Link to="/roadmap" className="import-pill import-pill--internal">
-                    Roadmap
-                  </Link>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="suggested-prompts suggested-prompts--chips"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.35 }}
-              >
-                <h3 className="suggested-prompts-label">Try asking</h3>
-                <div className="prompt-chips">
-                  {suggestedPrompts.map((prompt) => (
-                    <button
-                      key={prompt.id}
-                      type="button"
-                      className="prompt-chip-btn"
-                      onClick={() => handlePromptClick(prompt)}
-                    >
-                      {prompt.title}
-                    </button>
-                  ))}
-                </div>
               </motion.div>
             </div>
           ) : (
@@ -784,7 +769,9 @@ const Chatbot = () => {
                           Confidence: {Math.round(message.confidence * 100)}%
                         </div>
                       )}
-                      {message.roadmap_metadata && message.roadmap_metadata.is_roadmap_request && (
+                      {!planMode &&
+                      message.roadmap_metadata &&
+                      message.roadmap_metadata.is_roadmap_request && (
                         <div className="roadmap-suggestion">
                           <div className="roadmap-suggestion-header">
                             <MapPin size={16} />
@@ -804,7 +791,7 @@ const Chatbot = () => {
                           </div>
                         </div>
                       )}
-                      {message.metadata?.roadmap && (
+                      {!planMode && message.metadata?.roadmap && (
                         <div className="roadmap-preview">
                           <div className="roadmap-header">
                             <MapPin size={16} />
@@ -1067,6 +1054,68 @@ const Chatbot = () => {
           </motion.div>
         </motion.div>
       )}
+
+      <AnimatePresence>
+        {roadmapNotice && (
+          <motion.div
+            className="roadmap-notice-overlay"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="roadmap-notice-title"
+            aria-live="polite"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={dismissRoadmapNotice}
+          >
+            <motion.div
+              key={roadmapNotice.id}
+              className={`roadmap-notice-modal roadmap-notice-modal--${roadmapNotice.variant}`}
+              initial={{ scale: 0.94, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 12 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="roadmap-notice-close"
+                onClick={dismissRoadmapNotice}
+                aria-label="Dismiss"
+              >
+                <X size={18} />
+              </button>
+              <div className="roadmap-notice-icon" aria-hidden>
+                {roadmapNotice.variant === 'success' ? (
+                  <CheckCircle size={44} strokeWidth={1.75} />
+                ) : (
+                  <AlertCircle size={44} strokeWidth={1.75} />
+                )}
+              </div>
+              <h2 id="roadmap-notice-title" className="roadmap-notice-title">
+                {roadmapNotice.variant === 'success' ? 'Roadmap' : 'Notice'}
+              </h2>
+              <p className="roadmap-notice-message">{roadmapNotice.message}</p>
+              {roadmapNotice.variant === 'success' && (
+                <Link
+                  to="/roadmap"
+                  className="roadmap-notice-link"
+                  onClick={dismissRoadmapNotice}
+                >
+                  Open Roadmap
+                </Link>
+              )}
+              <p className="roadmap-notice-hint">Closes in a few seconds…</p>
+              <div className="roadmap-notice-timer-wrap">
+                <div
+                  className="roadmap-notice-timer-bar"
+                  style={{ animationDuration: `${ROADMAP_NOTICE_MS}ms` }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

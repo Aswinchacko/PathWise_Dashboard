@@ -1,9 +1,8 @@
 import axios from 'axios'
-
-const API_BASE_URL = 'http://127.0.0.1:8007'
+import { getPublicApiOrigin } from '../config/apiBase'
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getPublicApiOrigin(),
   timeout: 10000,
 })
 
@@ -11,7 +10,7 @@ const api = axios.create({
 export const getResumes = async (userId = null) => {
   try {
     const params = userId ? { user_id: userId } : {}
-    const response = await api.get('/resumes', { params })
+    const response = await api.get('/api/resume/resumes', { params })
     return {
       success: response.data.success,
       resumes: response.data.resumes || [],
@@ -30,7 +29,7 @@ export const getResumes = async (userId = null) => {
 // Get a specific resume by ID
 export const getResume = async (resumeId) => {
   try {
-    const response = await api.get(`/resumes/${resumeId}`)
+    const response = await api.get(`/api/resume/resumes/${resumeId}`)
     return {
       success: response.data.success,
       data: response.data.data,
@@ -49,7 +48,7 @@ export const getResume = async (resumeId) => {
 // Delete a resume by ID
 export const deleteResume = async (resumeId) => {
   try {
-    const response = await api.delete(`/resumes/${resumeId}`)
+    const response = await api.delete(`/api/resume/resumes/${resumeId}`)
     return {
       success: response.data.success,
       message: response.data.message,
@@ -74,7 +73,7 @@ export const parseAndStoreResume = async (file, userId = null) => {
       formData.append('user_id', userId)
     }
 
-    const response = await api.post('/parse', formData, {
+    const response = await api.post('/api/resume/parse', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

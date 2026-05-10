@@ -11,9 +11,8 @@ import {
   CheckCircle,
   Clock,
   RefreshCw,
-  Eye,
+  ExternalLink,
   Download,
-  Settings,
   Zap,
   BarChart3,
   TrendingUp,
@@ -25,6 +24,7 @@ import './SystemHealth.css'
 const SystemHealth = () => {
   const [systemHealth, setSystemHealth] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [refreshInterval, setRefreshInterval] = useState(30) // seconds
@@ -45,7 +45,8 @@ const SystemHealth = () => {
 
   const loadSystemHealth = async () => {
     try {
-      setLoading(true)
+      if (!systemHealth) setLoading(true)
+      else setRefreshing(true)
       const health = await adminService.getSystemHealth()
       setSystemHealth(health)
       setLastUpdated(new Date())
@@ -53,6 +54,7 @@ const SystemHealth = () => {
       console.error('Error loading system health:', error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -82,14 +84,22 @@ const SystemHealth = () => {
       case 'online':
       case 'connected':
         return 'success'
+      case 'degraded':
+      case 'warning':
+        return 'warning'
       case 'offline':
       case 'disconnected':
         return 'error'
-      case 'warning':
-        return 'warning'
       default:
         return 'neutral'
     }
+  }
+
+  const serviceStatusLabel = (status) => {
+    if (status === 'online') return 'ONLINE'
+    if (status === 'degraded') return 'DEGRADED'
+    if (status === 'offline') return 'OFFLINE'
+    return (status || 'unknown').toString().toUpperCase()
   }
 
   if (loading && !systemHealth) {
@@ -145,9 +155,9 @@ const SystemHealth = () => {
             <button
               className="btn-secondary"
               onClick={loadSystemHealth}
-              disabled={loading}
+              disabled={loading || refreshing}
             >
-              <RefreshCw size={20} className={loading ? 'spinning' : ''} />
+              <RefreshCw size={20} className={loading || refreshing ? 'spinning' : ''} />
               Refresh
             </button>
           </div>
@@ -219,7 +229,7 @@ const SystemHealth = () => {
             </div>
             <div className="detail-item">
               <span>Connection</span>
-              <span>MongoDB</span>
+              <span>{systemHealth?.database?.type || 'MongoDB'}</span>
             </div>
           </div>
         </div>
@@ -289,8 +299,11 @@ const SystemHealth = () => {
                 <span className="summary-item success">
                   {systemHealth.services.filter(s => s.status === 'online').length} Online
                 </span>
+                <span className="summary-item warning">
+                  {systemHealth.services.filter(s => s.status === 'degraded').length} Degraded
+                </span>
                 <span className="summary-item error">
-                  {systemHealth.services.filter(s => s.status !== 'online').length} Issues
+                  {systemHealth.services.filter(s => s.status === 'offline').length} Offline
                 </span>
               </>
             )}
@@ -300,7 +313,7 @@ const SystemHealth = () => {
         <div className="services-grid">
           {systemHealth?.services?.map((service, index) => (
             <motion.div
-              key={index}
+              key={`${service.name}-${index}`}
               className="service-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -315,36 +328,56 @@ const SystemHealth = () => {
                     ) : (
                       <AlertTriangle size={16} />
                     )}
-                    {service.status}
+                    {serviceStatusLabel(service.status)}
                   </div>
                 </div>
                 <div className="service-actions">
-                  <button className="action-btn" title="View Logs">
-                    <Eye size={16} />
-                  </button>
-                  <button className="action-btn" title="Settings">
-                    <Settings size={16} />
-                  </button>
+                  {service.healthUrl && (
+                    <a
+                      href={service.healthUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="action-btn action-btn-link"
+                      title="Open health JSON (same machine / dev)"
+                    >
+                      <ExternalLink size={16} />
+                    </a>
+                  )}
                 </div>
               </div>
+              {service.detail && (
+                <p className="service-detail-text">{service.detail}</p>
+              )}
               <div className="service-details">
                 <div className="detail-row">
-                  <span>Uptime</span>
-                  <span>{service.uptime}</span>
+                  <span>Latency</span>
+                  <span>{typeof service.responseMs === 'number' ? `${service.responseMs} ms` : '—'}</span>
                 </div>
                 <div className="detail-row">
-                  <span>Last Check</span>
+                  <span>Last check</span>
                   <span>{service.lastCheck ? new Date(service.lastCheck).toLocaleTimeString() : 'N/A'}</span>
                 </div>
               </div>
               <div className="service-metrics">
                 <div className="metric">
                   <Activity size={16} />
-                  <span>Healthy</span>
+                  <span>
+                    {service.status === 'online'
+                      ? 'Reachable'
+                      : service.status === 'degraded'
+                        ? 'Partial'
+                        : 'Unreachable'}
+                  </span>
                 </div>
                 <div className="metric">
                   <Zap size={16} />
-                  <span>Fast</span>
+                  <span>
+                    {typeof service.responseMs === 'number' && service.responseMs < 800
+                      ? 'Low latency'
+                      : typeof service.responseMs === 'number'
+                        ? 'Slower'
+                        : '—'}
+                  </span>
                 </div>
               </div>
             </motion.div>

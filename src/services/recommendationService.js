@@ -1,34 +1,24 @@
 /**
- * Recommendation Service
- * Handles project recommendations based on completed roadmap topics
+ * Recommendation Service — project Flask API behind nginx `/api/recommend` and `/api/projects`.
  */
-
-const RECOMMENDATION_API_URL = 'http://localhost:5003'
+import { apiUrl } from '../config/apiBase'
 
 class RecommendationService {
-  /**
-   * Get project recommendations based on completed topics
-   * @param {Array} completedTopics - Array of completed topic names
-   * @param {string} domain - Current roadmap domain
-   * @param {string} difficulty - Preferred difficulty level
-   * @param {number} limit - Number of recommendations to return
-   */
   async getRecommendations(completedTopics, domain = null, difficulty = null, limit = 5) {
     try {
-      // Create a goal string from completed topics
       const goal = `I have completed: ${completedTopics.join(', ')}. What should I build next?`
-      
-      const response = await fetch(`${RECOMMENDATION_API_URL}/api/recommend/projects`, {
+
+      const response = await fetch(apiUrl('/api/recommend'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          goal,
+          aim: goal,
           domain,
           difficulty,
-          limit
-        })
+          limit,
+        }),
       })
 
       if (!response.ok) {
@@ -43,26 +33,20 @@ class RecommendationService {
     }
   }
 
-  /**
-   * Get project recommendations based on a specific skill
-   * @param {string} skill - The skill name
-   * @param {string} domain - Current roadmap domain
-   * @param {number} limit - Number of recommendations to return
-   */
   async getRecommendationsForSkill(skill, domain = null, limit = 3) {
     try {
       const goal = `I want to practice ${skill} by building projects`
-      
-      const response = await fetch(`${RECOMMENDATION_API_URL}/api/recommend/projects`, {
+
+      const response = await fetch(apiUrl('/api/recommend'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          goal,
+          aim: goal,
           domain,
-          limit
-        })
+          limit,
+        }),
       })
 
       if (!response.ok) {
@@ -77,15 +61,10 @@ class RecommendationService {
     }
   }
 
-  /**
-   * Search for projects by technology
-   * @param {string} technology - Technology to search for
-   * @param {number} limit - Number of results to return
-   */
   async searchProjects(technology, limit = 5) {
     try {
       const response = await fetch(
-        `${RECOMMENDATION_API_URL}/api/recommend/projects/search?query=${encodeURIComponent(technology)}&limit=${limit}`
+        `${apiUrl('/api/projects')}?search=${encodeURIComponent(technology)}&limit=${limit}`
       )
 
       if (!response.ok) {
@@ -93,7 +72,7 @@ class RecommendationService {
       }
 
       const data = await response.json()
-      return data.search_results || []
+      return data.projects || data.search_results || []
     } catch (error) {
       console.error('Error searching projects:', error)
       return []
@@ -101,15 +80,11 @@ class RecommendationService {
   }
 
   /**
-   * Submit feedback for a project recommendation
-   * @param {string} userId - User ID
-   * @param {string} projectId - Project ID
-   * @param {number} rating - Rating from 1-5
-   * @param {string} feedback - Optional feedback text
+   * Backend has no `/api/recommend/feedback` yet — kept as a no-op so UI does not hard-fail.
    */
   async submitFeedback(userId, projectId, rating, feedback = '') {
     try {
-      const response = await fetch(`${RECOMMENDATION_API_URL}/api/recommend/feedback`, {
+      const response = await fetch(apiUrl('/api/recommend/feedback'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,32 +93,24 @@ class RecommendationService {
           user_id: userId,
           project_id: projectId,
           rating,
-          feedback
-        })
+          feedback,
+        }),
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        return null
       }
 
       return await response.json()
-    } catch (error) {
-      console.error('Error submitting feedback:', error)
+    } catch {
       return null
     }
   }
 
-  /**
-   * Check if recommendation service is available
-   */
   async checkHealth() {
     try {
-      const response = await fetch(`${RECOMMENDATION_API_URL}/health`)
-      if (response.ok) {
-        const data = await response.json()
-        return data.status === 'healthy'
-      }
-      return false
+      const response = await fetch(apiUrl('/api/projects/stats'))
+      return response.ok
     } catch (error) {
       console.error('Health check failed:', error)
       return false
@@ -152,4 +119,3 @@ class RecommendationService {
 }
 
 export default new RecommendationService()
-

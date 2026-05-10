@@ -1,12 +1,13 @@
-const API_BASE_URL = 'http://localhost:8006/api/subscription'
+import { apiUrl } from '../config/apiBase'
+
+const API_BASE_URL = apiUrl('/api/subscription')
 
 class SubscriptionService {
-  // Get all subscription plans
   async getPlans() {
     try {
       const response = await fetch(`${API_BASE_URL}/plans`)
       const data = await response.json()
-      
+
       if (response.ok) {
         return { success: true, plans: data }
       } else {
@@ -18,12 +19,11 @@ class SubscriptionService {
     }
   }
 
-  // Get user's subscription info
   async getUserSubscription(userId) {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${userId}`)
       const data = await response.json()
-      
+
       if (response.ok) {
         return { success: true, data }
       } else {
@@ -35,12 +35,11 @@ class SubscriptionService {
     }
   }
 
-  // Check feature access
   async checkFeatureAccess(userId, feature) {
     try {
       const response = await fetch(`${API_BASE_URL}/feature-access/${userId}/${feature}`)
       const data = await response.json()
-      
+
       if (response.ok) {
         return { success: true, access: data }
       } else {
@@ -52,8 +51,9 @@ class SubscriptionService {
     }
   }
 
-  // Create Razorpay order
-  async createOrder(userId, plan) {
+  /** Create PayPal order (plan = plan id string or { id }) */
+  async createOrder(userId, plan, prefill = {}) {
+    const planId = typeof plan === 'string' ? plan : plan?.id
     try {
       const response = await fetch(`${API_BASE_URL}/create-order`, {
         method: 'POST',
@@ -62,12 +62,13 @@ class SubscriptionService {
         },
         body: JSON.stringify({
           user_id: userId,
-          plan
+          plan: planId,
+          ...prefill,
         }),
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
         return { success: true, orderData: data }
       } else {
@@ -79,87 +80,97 @@ class SubscriptionService {
     }
   }
 
-  // Verify payment
-  async verifyPayment(paymentData) {
+  /** PayPal SDK config (backend snake_case → camelCase). */
+  async getPaymentConfig() {
     try {
-      const response = await fetch(`${API_BASE_URL}/verify-payment`, {
+      const response = await fetch(`${API_BASE_URL}/config`)
+      const data = await response.json()
+      if (!response.ok) {
+        return { success: false, error: data.detail || 'Failed to load payment config' }
+      }
+      return {
+        success: true,
+        mockMode: Boolean(data.mock_mode),
+        paypalClientId: data.paypal_client_id || null,
+        currency: data.currency || 'INR',
+      }
+    } catch (error) {
+      console.error('Error fetching payment config:', error)
+      return { success: false, error: 'Network error' }
+    }
+  }
+
+  /** Capture PayPal order after approval — body matches backend `CapturePaymentRequest`. */
+  async capturePayment(payload) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/capture-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(paymentData),
+        body: JSON.stringify(payload),
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
         return { success: true, data }
       } else {
-        return { success: false, error: data.detail || 'Payment verification failed' }
+        return { success: false, error: data.detail || 'Failed to capture payment' }
       }
     } catch (error) {
-      console.error('Error verifying payment:', error)
+      console.error('Error capturing payment:', error)
       return { success: false, error: 'Network error' }
     }
   }
 
-  // Cancel subscription
+  /** Process Razorpay / unified payment payload used by PaymentModal */
+  async processPayment(paymentPayload) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/process-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentPayload),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        return { success: true, data }
+      } else {
+        return { success: false, error: data.detail || data.message || 'Payment processing failed' }
+      }
+    } catch (error) {
+      console.error('Error processing payment:', error)
+      return { success: false, error: 'Network error' }
+    }
+  }
+
+  /** Cancel subscription for user */
   async cancelSubscription(userId) {
     try {
       const response = await fetch(`${API_BASE_URL}/cancel/${userId}`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
-        return { success: true, message: data.message }
+        return { success: true, data }
       } else {
-        return { success: false, error: data.detail || 'Failed to cancel subscription' }
+        return { success: false, error: data.detail || data.message || 'Cancellation failed' }
       }
     } catch (error) {
-      console.error('Error canceling subscription:', error)
+      console.error('Error cancelling subscription:', error)
       return { success: false, error: 'Network error' }
     }
   }
 
-  // Get Razorpay config
-  async getRazorpayConfig() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/config`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        return { success: true, keyId: data.key_id }
-      } else {
-        return { success: false, error: 'Failed to get Razorpay config' }
-      }
-    } catch (error) {
-      console.error('Error fetching Razorpay config:', error)
-      return { success: false, error: 'Network error' }
-    }
-  }
-
-  // Helper method to check if user has access to a feature
-  async hasFeatureAccess(userId, feature) {
-    const result = await this.checkFeatureAccess(userId, feature)
-    return result.success ? result.access.allowed : false
-  }
-
-  // Helper method to get feature usage info
-  async getFeatureUsage(userId, feature) {
-    const result = await this.checkFeatureAccess(userId, feature)
-    if (result.success) {
-      return {
-        current: result.access.current_usage,
-        limit: result.access.limit,
-        allowed: result.access.allowed,
-        plan: result.access.plan
-      }
-    }
-    return null
-  }
 }
 
-const subscriptionService = new SubscriptionService()
-export default subscriptionService
+export default new SubscriptionService()

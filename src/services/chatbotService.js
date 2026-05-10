@@ -1,13 +1,13 @@
 import axios from 'axios'
+import { apiUrl } from '../config/apiBase'
 
-const CHATBOT_API_URL = 'http://localhost:8004'
-const ROADMAP_API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const CHATBOT_BASE = apiUrl('/api/chatbot')
 
 const chatbotService = {
   // Send a message to the chatbot
   async sendMessage(message, userId = 'anonymous', chatId = null) {
     try {
-      const response = await axios.post(`${CHATBOT_API_URL}/chat`, {
+      const response = await axios.post(`${CHATBOT_BASE}/chat`, {
         message,
         user_id: userId,
         chat_id: chatId
@@ -23,7 +23,7 @@ const chatbotService = {
   async createNewChat(userId, title = 'New Chat') {
     try {
       console.log('Creating new chat for user:', userId, 'with title:', title)
-      const response = await axios.post(`${CHATBOT_API_URL}/chats/new`, {
+      const response = await axios.post(`${CHATBOT_BASE}/chats/new`, {
         user_id: userId,
         title
       })
@@ -40,7 +40,7 @@ const chatbotService = {
   async getUserChats(userId, limit = 20) {
     try {
       console.log('Fetching chats for user:', userId)
-      const response = await axios.get(`${CHATBOT_API_URL}/chats/${userId}?limit=${limit}`)
+      const response = await axios.get(`${CHATBOT_BASE}/chats/${userId}?limit=${limit}`)
       console.log('Chat history response:', response.data)
       return response.data.chats || []
     } catch (error) {
@@ -53,7 +53,7 @@ const chatbotService = {
   // Get messages for a specific chat
   async getChatMessages(userId, chatId) {
     try {
-      const response = await axios.get(`${CHATBOT_API_URL}/chats/${userId}/${chatId}`)
+      const response = await axios.get(`${CHATBOT_BASE}/chats/${userId}/${chatId}`)
       return response.data
     } catch (error) {
       console.error('Error getting chat messages:', error)
@@ -64,7 +64,7 @@ const chatbotService = {
   // Delete a chat
   async deleteChat(userId, chatId) {
     try {
-      const response = await axios.delete(`${CHATBOT_API_URL}/chats/${userId}/${chatId}`)
+      const response = await axios.delete(`${CHATBOT_BASE}/chats/${userId}/${chatId}`)
       return response.data
     } catch (error) {
       console.error('Error deleting chat:', error)
@@ -75,7 +75,7 @@ const chatbotService = {
   // Update chat title
   async updateChatTitle(userId, chatId, title) {
     try {
-      const response = await axios.put(`${CHATBOT_API_URL}/chats/${userId}/${chatId}/title?title=${encodeURIComponent(title)}`)
+      const response = await axios.put(`${CHATBOT_BASE}/chats/${userId}/${chatId}/title?title=${encodeURIComponent(title)}`)
       return response.data
     } catch (error) {
       console.error('Error updating chat title:', error)
@@ -86,7 +86,7 @@ const chatbotService = {
   // Get conversation starter suggestions
   async getSuggestions() {
     try {
-      const response = await axios.get(`${CHATBOT_API_URL}/suggestions`)
+      const response = await axios.get(`${CHATBOT_BASE}/suggestions`)
       return response.data.suggestions
     } catch (error) {
       console.error('Error getting suggestions:', error)
@@ -97,7 +97,7 @@ const chatbotService = {
   // Check if chatbot service is healthy
   async checkHealth() {
     try {
-      const response = await axios.get(`${CHATBOT_API_URL}/health`)
+      const response = await axios.get(`${CHATBOT_BASE}/health`)
       return response.data.status === 'healthy'
     } catch (error) {
       console.error('Chatbot service is not available:', error)
@@ -108,7 +108,7 @@ const chatbotService = {
   // Generate a roadmap
   async generateRoadmap(goal, userId, domain = null) {
     try {
-      const response = await axios.post(`${CHATBOT_API_URL}/roadmap/generate`, {
+      const response = await axios.post(`${CHATBOT_BASE}/roadmap/generate`, {
         goal,
         user_id: userId,
         domain
@@ -125,7 +125,7 @@ const chatbotService = {
     if (!userId) return []
     try {
       const response = await axios.get(
-        `${ROADMAP_API_BASE}/api/roadmap/roadmaps/user/${encodeURIComponent(userId)}`
+        apiUrl(`/api/roadmap/roadmaps/user/${encodeURIComponent(userId)}`)
       )
       return response.data.roadmaps || []
     } catch (error) {
@@ -137,7 +137,7 @@ const chatbotService = {
   async deleteRoadmap(roadmapId, userId) {
     try {
       const response = await axios.delete(
-        `${ROADMAP_API_BASE}/api/roadmap/roadmaps/${encodeURIComponent(roadmapId)}`,
+        apiUrl(`/api/roadmap/roadmaps/${encodeURIComponent(roadmapId)}`),
         { params: { user_id: userId } }
       )
       return response.data
@@ -150,7 +150,7 @@ const chatbotService = {
   // Get available domains
   async getAvailableDomains() {
     try {
-      const response = await axios.get(`${CHATBOT_API_URL}/roadmap/domains`)
+      const response = await axios.get(`${CHATBOT_BASE}/roadmap/domains`)
       return response.data.domains || []
     } catch (error) {
       console.error('Error getting domains:', error)
@@ -162,7 +162,7 @@ const chatbotService = {
   async createRoadmapFromChat(userId, chatId, title, goal, domain = null) {
     try {
       console.log('Creating roadmap from chat:', { userId, chatId, title, goal, domain })
-      const response = await axios.post(`${CHATBOT_API_URL}/roadmap/create-from-chat`, {
+      const response = await axios.post(`${CHATBOT_BASE}/roadmap/create-from-chat`, {
         user_id: userId,
         chat_id: chatId,
         title,

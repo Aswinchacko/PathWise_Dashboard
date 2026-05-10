@@ -1,11 +1,9 @@
 import axios from 'axios'
+import { getPublicApiOrigin } from '../config/apiBase'
 
-// Resume Parser Microservice URL
-const API_BASE_URL = 'http://127.0.0.1:8005'
-
-// Create axios instance with default config
+// Create axios instance with default config (nginx /api/resume -> resume-parser)
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getPublicApiOrigin(),
   timeout: 30000, // 30 seconds timeout for file uploads
   headers: {
     'Content-Type': 'multipart/form-data',
@@ -160,7 +158,7 @@ class ResumeService {
         formData.append('user_id', userId)
       }
 
-      const response = await api.post('/parse', formData, {
+      const response = await api.post('/api/resume/parse', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -193,7 +191,7 @@ class ResumeService {
    */
   async healthCheck() {
     try {
-      const response = await api.get('/health')
+      const response = await api.get('/api/resume/health')
       return {
         success: true,
         data: response.data
@@ -215,7 +213,7 @@ class ResumeService {
   async getResumes(userId = null) {
     try {
       const params = userId ? { user_id: userId } : {}
-      const response = await api.get('/resumes', { params })
+      const response = await api.get('/api/resume/resumes', { params })
       return {
         success: response.data.success,
         data: response.data.resumes,
@@ -237,7 +235,7 @@ class ResumeService {
    */
   async getResume(resumeId) {
     try {
-      const response = await api.get(`/resumes/${resumeId}`)
+      const response = await api.get(`/api/resume/resumes/${resumeId}`)
       return {
         success: response.data.success,
         data: response.data.data,
@@ -296,7 +294,7 @@ class ResumeService {
       formData.append('file', file)
       formData.append('extract_text_only', 'true') // Flag for text extraction only
 
-      const response = await api.post('/extract-text', formData, {
+      const response = await api.post('/api/resume/extract-text', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -313,7 +311,7 @@ class ResumeService {
         const formData = new FormData()
         formData.append('file', file)
 
-        const response = await api.post('/parse', formData, {
+        const response = await api.post('/api/resume/parse', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -346,7 +344,7 @@ class ResumeService {
         formData.append('user_id', userId)
       }
 
-      const response = await api.post('/parse', formData, {
+      const response = await api.post('/api/resume/parse', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

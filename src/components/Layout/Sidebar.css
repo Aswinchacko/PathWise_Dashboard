@@ -113,6 +113,33 @@
   padding: var(--spacing-lg) var(--spacing-md);
 }
 
+.sidebar .nav-footer {
+  margin-top: auto !important;
+  padding-top: var(--spacing-md) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.sidebar .logout-btn {
+  width: 100% !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  color: #dc2626 !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+.sidebar .logout-btn:hover {
+  color: #b91c1c !important;
+  background: rgba(220, 38, 38, 0.08) !important;
+  border-color: rgba(220, 38, 38, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+.sidebar.collapsed .logout-btn {
+  justify-content: center !important;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -270,6 +297,26 @@
 
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
   background: rgba(59, 130, 246, 0.3);
+}
+
+/* Mobile drawer backdrop (paired with Layout mobile menu button) */
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 90 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(2px);
+    cursor: pointer;
+  }
 }
 
 /* Responsive */

@@ -468,6 +468,36 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 12px 40px rgba(59, 130, 246, 0.12);
 }
 
+.plan-mode-notice {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  text-align: left;
+}
+
+.plan-mode-notice-icon {
+  flex-shrink: 0;
+  color: #2563eb;
+  margin-top: 1px;
+}
+
+.plan-mode-notice p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #1e3a5f;
+}
+
+.plan-mode-notice strong {
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
 .chat-composer-textarea {
   width: 100%;
   border: none;
@@ -530,7 +560,7 @@
   transform: scale(0.96);
 }
 
-.composer-model-btn {
+.composer-model-label {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -541,13 +571,8 @@
   color: var(--chat-text);
   font-size: 0.8rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.composer-model-btn:hover {
-  background: #fff;
-  border-color: #d1d5db;
+  user-select: none;
+  pointer-events: none;
 }
 
 .composer-model-icon {

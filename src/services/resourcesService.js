@@ -1,19 +1,22 @@
 import axios from 'axios';
+import { getPublicApiOrigin } from '../config/apiBase';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const RESOURCES_API_URL = import.meta.env.VITE_RESOURCES_API_URL || 'http://localhost:8010';
+/** Single nginx origin; optional override only if resources are hosted elsewhere. */
+const ORIGIN = import.meta.env.VITE_RESOURCES_PUBLIC_URL
+  ? String(import.meta.env.VITE_RESOURCES_PUBLIC_URL).replace(/\/$/, '')
+  : getPublicApiOrigin();
 
-// Create axios instance for main API
+// Create axios instance for main API (roadmap paths)
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: ORIGIN,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Create axios instance for resources service
+// Resources + scraping share the same gateway in Docker
 const resourcesApi = axios.create({
-  baseURL: RESOURCES_API_URL,
+  baseURL: ORIGIN,
   headers: {
     'Content-Type': 'application/json',
   },

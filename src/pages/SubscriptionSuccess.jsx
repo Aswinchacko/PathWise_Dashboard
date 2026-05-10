@@ -116,7 +116,10 @@ const SubscriptionSuccess = () => {
               <Crown className="plan-icon" />
               <div>
                 <h3>{subscriptionInfo.plan_details.name}</h3>
-                <p>${subscriptionInfo.plan_details.price}/month</p>
+                <p>
+                  {subscriptionInfo.plan_details.price_display ||
+                    `₹${subscriptionInfo.plan_details.price}/month`}
+                </p>
               </div>
             </div>
             

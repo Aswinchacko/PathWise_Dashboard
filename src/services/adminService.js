@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:5000/api/admin'
+import { apiUrl } from '../config/apiBase'
+
+const API_BASE_URL = apiUrl('/api/admin')
 
 class AdminService {
   // Get auth token

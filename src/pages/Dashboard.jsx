@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  MessageCircle, 
-  Map, 
-  FileText, 
-  Activity, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle, 
+import {
+  MessageCircle,
+  Map,
+  FileText,
+  Activity,
+  Clock,
+  CheckCircle,
+  AlertCircle,
   XCircle,
-  ArrowRight,
-  BarChart3,
   Settings,
   Search,
   Target,
@@ -21,26 +19,90 @@ import {
 import './Dashboard.css'
 import dashboardService from '../services/dashboardService'
 
-const Dashboard = () => {
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    roadmapsGenerated: 0,
-    chatSessions: 0,
-    resumesProcessed: 0
-  })
+/** One rotating line per action — same tone as former overview quotes */
+const MOTIVATION = {
+  resume: [
+    'Your story starts on the page—let PathWise read between the lines.',
+    'Skills hide in plain sight until you upload.',
+    'A strong profile begins with one honest file.'
+  ],
+  roadmap: [
+    'A clear plan turns dreams into deadlines.',
+    'Direction matters more than speed.',
+    'Map it out, then walk it—one milestone at a time.'
+  ],
+  guidance: [
+    'Good questions unlock better answers.',
+    'Curiosity is a career skill—use it often.',
+    'One focused chat can change your next move.'
+  ],
+  jobs: [
+    'The right role is closer when your aim is clear.',
+    'Search with intent; every listing is a data point.',
+    'Opportunities favor the prepared roadmap.'
+  ]
+}
 
+function pickMotivation(key) {
+  const lines = MOTIVATION[key]
+  if (!lines?.length) return ''
+  const day = Math.floor(Date.now() / 86400000)
+  const salt = { resume: 0, roadmap: 11, guidance: 23, jobs: 7 }[key] ?? 0
+  return lines[(day + salt) % lines.length]
+}
+
+const ESSENTIAL_ACTIONS = [
+  {
+    key: 'resume',
+    tag: 'Resume',
+    title: 'Upload your resume',
+    description:
+      'Parse your resume to extract skills, experience, and career background for personalized recommendations.',
+    motivationKey: 'resume',
+    icon: Upload,
+    cta: 'Start parsing',
+    to: '/resume-parser'
+  },
+  {
+    key: 'roadmap',
+    tag: 'Roadmap',
+    title: 'Generate career roadmap',
+    description:
+      'Create a personalized career path based on your skills, interests, and goals.',
+    motivationKey: 'roadmap',
+    icon: Target,
+    cta: 'Create roadmap',
+    to: '/roadmap'
+  },
+  {
+    key: 'guidance',
+    tag: 'AI mentor',
+    title: 'Get AI career guidance',
+    description:
+      'Chat with our AI mentor for personalized advice, skill recommendations, and career insights.',
+    motivationKey: 'guidance',
+    icon: Bot,
+    cta: 'Start chatting',
+    to: '/chatbot'
+  },
+  {
+    key: 'jobs',
+    tag: 'Jobs',
+    title: 'Find real jobs',
+    description:
+      'Discover job opportunities that match your roadmap and career progression goals.',
+    motivationKey: 'jobs',
+    icon: Search,
+    cta: 'Browse jobs',
+    to: '/jobs'
+  }
+]
+
+const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const quickActions = [
-    { icon: Target, label: 'Generate Roadmap', description: 'Create personalized career paths', color: '#10b981', href: '/roadmap' },
-    { icon: Bot, label: 'AI Chatbot', description: 'Get career guidance and advice', color: '#3b82f6', href: '/chatbot' },
-    { icon: Upload, label: 'Parse Resume', description: 'Extract skills and experience', color: '#f59e0b', href: '/resume-parser' },
-    { icon: BarChart3, label: 'Analytics', description: 'View detailed insights', color: '#8b5cf6', href: '/analytics' }
-  ]
-
-  // Load dashboard data
   useEffect(() => {
     loadDashboardData()
   }, [])
@@ -49,36 +111,12 @@ const Dashboard = () => {
     try {
       setLoading(true)
       setError(null)
-
-      // Fetch basic data
-      const [statsData, activityData] = await Promise.allSettled([
-        dashboardService.getDashboardStats(),
-        dashboardService.getRecentActivity()
-      ])
-
-      // Update stats
-      if (statsData.status === 'fulfilled') {
-        setStats(statsData.value)
-      }
-
-      // Update recent activity
-      if (activityData.status === 'fulfilled') {
-        setRecentActivity(activityData.value)
-      }
-
-      // Check for any errors
-      const errors = [statsData, activityData]
-        .filter(result => result.status === 'rejected')
-        .map(result => result.reason.message)
-
-      if (errors.length > 0) {
-        console.warn('Some data failed to load:', errors)
-        setError(`Some data may be outdated. ${errors.length} service(s) unavailable.`)
-      }
-
-    } catch (error) {
-      console.error('Error loading dashboard data:', error)
-      setError('Failed to load dashboard data. Please check your connection.')
+      const data = await dashboardService.getRecentActivity()
+      setRecentActivity(data)
+    } catch (err) {
+      console.error('Error loading dashboard:', err)
+      setError('Recent activity could not be loaded.')
+      setRecentActivity([])
     } finally {
       setLoading(false)
     }
@@ -91,15 +129,15 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
-      <div className="dashboard-header">
+      <header className="dashboard-header">
         <div className="header-content">
-          <div className="header-left">
-            <h1 className="dashboard-title">PathWise Dashboard</h1>
-            <p className="dashboard-subtitle">
-              Career guidance and roadmap generation platform
-            </p>
-          </div>
+          <h1 className="dashboard-title">PathWise Dashboard</h1>
+          <p
+            className="dashboard-subtitle"
+            title="Your career workspace—resume, roadmap, guidance, and roles in one flow."
+          >
+            Your career workspace—resume, roadmap, guidance, and roles in one flow.
+          </p>
           <div className="header-right">
             <div className="header-actions">
               {error && (
@@ -107,9 +145,10 @@ const Dashboard = () => {
                   <AlertCircle size={16} />
                 </div>
               )}
-              <button 
-                className={`btn-icon ${loading ? 'loading' : ''}`} 
-                title="Refresh Data"
+              <button
+                type="button"
+                className={`btn-icon ${loading ? 'loading' : ''}`}
+                title="Refresh"
                 onClick={handleRefresh}
                 disabled={loading}
               >
@@ -121,140 +160,101 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
       <div className="dashboard-content">
-        {/* Platform Steps */}
-        <div className="steps-grid">
-          <div className="step-card">
-            <div className="step-number">1</div>
-            <div className="step-content">
-              <h3 className="step-title">Upload Your Resume</h3>
-              <p className="step-description">Parse your resume to extract skills, experience, and career background for personalized recommendations</p>
-              <a href="/resume-parser" className="step-action">
-                <Upload size={16} />
-                Start Parsing
-              </a>
-            </div>
-          </div>
-
-          <div className="step-card">
-            <div className="step-number">2</div>
-            <div className="step-content">
-              <h3 className="step-title">Generate Career Roadmap</h3>
-              <p className="step-description">Create a personalized career path based on your skills, interests, and goals</p>
-              <a href="/roadmap" className="step-action">
-                <Target size={16} />
-                Create Roadmap
-              </a>
-            </div>
-          </div>
-
-          <div className="step-card">
-            <div className="step-number">3</div>
-            <div className="step-content">
-              <h3 className="step-title">Get AI Career Guidance</h3>
-              <p className="step-description">Chat with our AI mentor for personalized advice, skill recommendations, and career insights</p>
-              <a href="/chatbot" className="step-action">
-                <Bot size={16} />
-                Start Chatting
-              </a>
-            </div>
-          </div>
-
-          <div className="step-card">
-            <div className="step-number">4</div>
-            <div className="step-content">
-              <h3 className="step-title">Find Real Jobs</h3>
-              <p className="step-description">Discover job opportunities that match your roadmap aim and career progression goals</p>
-              <a href="/jobs" className="step-action">
-                <Search size={16} />
-                Browse Jobs
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Grid */}
-        <div className="main-grid">
-          {/* Quick Actions */}
-          <div className="dashboard-card quick-actions-card">
-            <div className="card-header">
-              <h2 className="card-title">Quick Actions</h2>
-              <p className="card-subtitle">Access main features quickly</p>
-            </div>
-            <div className="quick-actions-grid">
-              {quickActions.map((action, index) => (
-                <a key={index} href={action.href} className="quick-action-item">
-                  <div className="action-icon" style={{ backgroundColor: action.color }}>
-                    <action.icon size={24} />
+        <section className="essentials-section" aria-labelledby="essentials-heading">
+          <h2 id="essentials-heading" className="essentials-heading">
+            Quick actions
+          </h2>
+          <p className="essentials-lead">
+            Resume, roadmap, AI mentor, and jobs—each card opens that area of the app.
+          </p>
+          <div className="essentials-grid">
+            {ESSENTIAL_ACTIONS.map((item) => (
+              <article key={item.key} className="essential-card">
+                <div className="essential-card-top">
+                  <span className="essential-tag">{item.tag}</span>
+                  <div className="essential-icon-wrap" aria-hidden>
+                    <item.icon className="essential-icon" strokeWidth={1.75} />
                   </div>
-                  <div className="action-content">
-                    <h3 className="action-title">{action.label}</h3>
-                    <p className="action-description">{action.description}</p>
-                  </div>
-                  <ArrowRight size={20} className="action-arrow" />
-                </a>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="dashboard-card activity-card">
-            <div className="card-header">
-              <h2 className="card-title">Recent Activity</h2>
-              <button className="btn-text">View All</button>
-            </div>
-            <div className="activity-list">
-              {loading ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="activity-item">
-                    <div className="activity-icon">
-                      <div className="loading-skeleton" style={{ width: '16px', height: '16px', borderRadius: '4px' }}></div>
-                    </div>
-                    <div className="activity-content">
-                      <div className="loading-skeleton" style={{ width: '200px', height: '16px', marginBottom: '4px' }}></div>
-                      <div className="loading-skeleton" style={{ width: '80px', height: '12px' }}></div>
-                    </div>
-                    <div className="activity-status">
-                      <div className="loading-skeleton" style={{ width: '16px', height: '16px', borderRadius: '50%' }}></div>
-                    </div>
-                  </div>
-                ))
-              ) : recentActivity.length > 0 ? (
-                recentActivity.map((activity) => (
-                  <div key={activity.id} className="activity-item">
-                    <div className="activity-icon">
-                      {activity.type === 'roadmap' && <Map size={16} />}
-                      {activity.type === 'chat' && <MessageCircle size={16} />}
-                      {activity.type === 'resume' && <FileText size={16} />}
-                    </div>
-                    <div className="activity-content">
-                      <p className="activity-text">
-                        {activity.action}
-                      </p>
-                      <p className="activity-time">{activity.time}</p>
-                    </div>
-                    <div className={`activity-status ${activity.status}`}>
-                      {activity.status === 'success' && <CheckCircle size={16} />}
-                      {activity.status === 'processing' && <Clock size={16} />}
-                      {activity.status === 'error' && <XCircle size={16} />}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="empty-state">
-                  <Activity size={48} />
-                  <p>No recent activity</p>
                 </div>
-              )}
+                <h3 className="essential-title">{item.title}</h3>
+                <p className="essential-desc">{item.description}</p>
+                <p className="essential-quote">{pickMotivation(item.motivationKey)}</p>
+                <Link to={item.to} className="essential-cta">
+                  <item.icon size={16} strokeWidth={2} aria-hidden />
+                  {item.cta}
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="activity-section dashboard-card" aria-labelledby="activity-heading">
+          <div className="card-header card-header--activity">
+            <div>
+              <h2 id="activity-heading" className="card-title">
+                Recent activity
+              </h2>
+              <p className="card-subtitle">Latest roadmap activity on the platform</p>
             </div>
           </div>
-        </div>
+          <div className="activity-list">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="activity-item">
+                  <div className="activity-icon">
+                    <div
+                      className="loading-skeleton"
+                      style={{ width: '16px', height: '16px', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="activity-content">
+                    <div
+                      className="loading-skeleton"
+                      style={{ width: '200px', height: '16px', marginBottom: '4px' }}
+                    />
+                    <div className="loading-skeleton" style={{ width: '80px', height: '12px' }} />
+                  </div>
+                  <div className="activity-status">
+                    <div
+                      className="loading-skeleton"
+                      style={{ width: '16px', height: '16px', borderRadius: '50%' }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : recentActivity.length > 0 ? (
+              recentActivity.map((activity) => (
+                <div key={activity.id} className="activity-item">
+                  <div className="activity-icon">
+                    {activity.type === 'roadmap' && <Map size={16} />}
+                    {activity.type === 'chat' && <MessageCircle size={16} />}
+                    {activity.type === 'resume' && <FileText size={16} />}
+                  </div>
+                  <div className="activity-content">
+                    <p className="activity-text">{activity.action}</p>
+                    <p className="activity-time">{activity.time}</p>
+                  </div>
+                  <div className={`activity-status ${activity.status}`}>
+                    {activity.status === 'success' && <CheckCircle size={16} />}
+                    {activity.status === 'processing' && <Clock size={16} />}
+                    {activity.status === 'error' && <XCircle size={16} />}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="empty-state">
+                <Activity size={48} />
+                <p>No recent activity yet</p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   )
 }
 
-export default Dashboard 
+export default Dashboard

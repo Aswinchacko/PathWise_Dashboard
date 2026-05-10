@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiUrl } from '../config/apiBase';
 
 const AuthDebug = () => {
   const [token, setToken] = useState('');
@@ -21,7 +22,7 @@ const AuthDebug = () => {
 
   const testAuth = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/discussions', {
+      const response = await fetch(apiUrl('/api/discussions'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }

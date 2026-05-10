@@ -289,6 +289,22 @@
   color: var(--error-700);
 }
 
+.summary-item.warning {
+  background: var(--warning-50);
+  color: var(--warning-700);
+}
+
+.service-detail-text {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.action-btn-link {
+  text-decoration: none;
+}
+
 .services-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -346,6 +362,11 @@
 .status-badge.warning {
   background: var(--warning-50);
   color: var(--warning-700);
+}
+
+.status-badge.neutral {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
 }
 
 .service-actions {

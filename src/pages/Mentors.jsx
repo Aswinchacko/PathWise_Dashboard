@@ -19,9 +19,8 @@ import {
   Filter
 } from 'lucide-react'
 import authService from '../services/authService'
+import { apiUrl } from '../config/apiBase'
 import './Mentors.css'
-
-const LINKEDIN_MENTOR_API = 'http://localhost:8001'
 
 const Mentors = () => {
   const [mentors, setMentors] = useState([])
@@ -55,7 +54,7 @@ const Mentors = () => {
       }
 
       // Call the new LinkedIn scraping service
-      const response = await fetch(`${LINKEDIN_MENTOR_API}/api/mentors/scrape`, {
+      const response = await fetch(apiUrl('/api/mentors/scrape'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

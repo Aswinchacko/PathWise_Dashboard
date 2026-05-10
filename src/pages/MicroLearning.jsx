@@ -452,7 +452,7 @@ const MicroLearning = () => {
         const hints = {
             service: {
                 title: 'Micro-learning service unavailable',
-                body: 'The app could not reach the gamified service (set VITE_MICROLEARNING_API_URL in dashboard/.env, e.g. http://localhost:8007/api/v1/microlearning) or init failed. Start gamified_micro_learning, confirm MongoDB/GROQ env, restart `npm run dev`, then refresh.',
+                body: 'Could not reach micro-learning (default URL `/api/v1/microlearning` via nginx). Set VITE_MICROLEARNING_API_URL in dashboard `.env` if it runs elsewhere, ensure `microlearning-service` is up (`docker compose up`), then refresh.',
             },
             stale_roadmap: {
                 title: 'Roadmap ID not found for your account',

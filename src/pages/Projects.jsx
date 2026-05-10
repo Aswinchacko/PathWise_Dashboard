@@ -1,8 +1,7 @@
 import { Star, Target, Loader2, X, CheckCircle } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import './Projects.css'
-
-const PROJECT_API = import.meta.env.VITE_PROJECT_RECOMMENDATION_URL || 'http://localhost:5003'
+import { projectRecommendationUrl } from '../config/apiBase'
 const LOCAL_STARTED_KEY = 'pathwise.projectStartedIds'
 
 function readLocalStartedIds() {
@@ -167,7 +166,7 @@ const Projects = () => {
     let cancelled = false
     ;(async () => {
       try {
-        const r = await fetch(`${PROJECT_API}/api/projects`)
+        const r = await fetch(`${projectRecommendationUrl('/api/projects')}`)
         const data = await r.json()
         if (cancelled || !data.success || !Array.isArray(data.projects) || data.projects.length === 0) {
           return
@@ -201,7 +200,7 @@ const Projects = () => {
 
     setLoading(true)
     try {
-      const response = await fetch(`${PROJECT_API}/api/recommend`, {
+      const response = await fetch(`${projectRecommendationUrl('/api/recommend')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aim: userAim, limit: 6 })
@@ -261,7 +260,7 @@ const Projects = () => {
     setLoadingStages(true)
     setProjectStages([])
     try {
-      const response = await fetch(`${PROJECT_API}/api/project-stages`, {
+      const response = await fetch(`${projectRecommendationUrl('/api/project-stages')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -297,7 +296,7 @@ const Projects = () => {
     setSelectedProject((prev) => (prev?.id === id ? { ...prev, started } : prev))
 
     try {
-      await fetch(`${PROJECT_API}/api/projects/${id}/started`, {
+      await fetch(`${projectRecommendationUrl(`/api/projects/${id}/started`)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ started }),

@@ -1,4 +1,22 @@
-const API_BASE_URL = 'http://localhost:5000/api/auth'
+import { apiUrl } from '../config/apiBase'
+
+const API_BASE_URL = apiUrl('/api/auth')
+
+/** Avoid `Unexpected end of JSON input` when proxy returns an empty body */
+async function parseAuthJson(response) {
+  const text = await response.text()
+  if (!text?.trim()) {
+    throw new Error(
+      `Empty response from auth API (HTTP ${response.status}). ` +
+        'Run auth_back on port 5000 and restart the dashboard dev server, or point DEV_PROXY_AUTH_TARGET at your auth server.'
+    )
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error(`Auth API returned non-JSON (HTTP ${response.status}).`)
+  }
+}
 
 class AuthService {
   // Login user
@@ -11,8 +29,8 @@ class AuthService {
       body: JSON.stringify({ email, password }),
     })
     
-    const data = await response.json()
-    
+    const data = await parseAuthJson(response)
+
     if (response.ok) {
       // Store token and user data
       localStorage.setItem('token', data.token)
@@ -33,8 +51,8 @@ class AuthService {
       body: JSON.stringify({ token }),
     })
     
-    const data = await response.json()
-    
+    const data = await parseAuthJson(response)
+
     if (response.ok) {
       // Store token and user data
       localStorage.setItem('token', data.token)
@@ -55,8 +73,8 @@ class AuthService {
       body: JSON.stringify({ code }),
     })
     
-    const data = await response.json()
-    
+    const data = await parseAuthJson(response)
+
     if (response.ok) {
       // Store token and user data
       localStorage.setItem('token', data.token)
@@ -77,8 +95,8 @@ class AuthService {
       body: JSON.stringify({ code }),
     })
     
-    const data = await response.json()
-    
+    const data = await parseAuthJson(response)
+
     if (response.ok) {
       // Store token and user data
       localStorage.setItem('token', data.token)
@@ -99,8 +117,8 @@ class AuthService {
       body: JSON.stringify({ firstName, lastName, email, password }),
     })
     
-    const data = await response.json()
-    
+    const data = await parseAuthJson(response)
+
     if (response.ok) {
       // Store token and user data
       localStorage.setItem('token', data.token)
@@ -126,8 +144,8 @@ class AuthService {
       },
     })
     
-    const data = await response.json()
-    
+    const data = await parseAuthJson(response)
+
     if (response.ok) {
       return data
     } else {
@@ -151,8 +169,8 @@ class AuthService {
       body: JSON.stringify({ firstName, lastName }),
     })
     
-    const data = await response.json()
-    
+    const data = await parseAuthJson(response)
+
     if (response.ok) {
       // Update stored user data
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
@@ -166,6 +184,11 @@ class AuthService {
 
   // Logout user
   logout() {
+    try {
+      window.google?.accounts?.id?.cancel()
+    } catch {
+      /* ignore */
+    }
     localStorage.removeItem('token')
     localStorage.removeItem('user')
   }

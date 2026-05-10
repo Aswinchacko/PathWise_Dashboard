@@ -17,14 +17,21 @@ import {
   Shield,
   Crown,
   Zap,
-  Gamepad2
+  Gamepad2,
+  LogOut
 } from 'lucide-react'
 import './Sidebar.css'
 import authService from '../../services/authService'
 
-const Sidebar = ({ collapsed, setCollapsed }) => {
+const Sidebar = ({ collapsed, setCollapsed, mobileOpen = false, onMobileClose }) => {
   const location = useLocation()
   const isAdmin = authService.isAdmin()
+
+  const handleLogout = () => {
+    authService.logout()
+    onMobileClose?.()
+    window.location.href = '/login'
+  }
 
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
@@ -43,8 +50,17 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   ]
 
   return (
+    <>
+      {mobileOpen && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close navigation menu"
+          onClick={onMobileClose}
+        />
+      )}
     <motion.aside
-      className={`sidebar ${collapsed ? 'collapsed' : ''}`}
+      className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'open' : ''}`}
       initial={{ width: collapsed ? 80 : 280 }}
       animate={{ width: collapsed ? 80 : 280 }}
       transition={{ duration: 0.15, ease: "easeOut" }}
@@ -86,6 +102,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
             >
               <NavLink
                 to={item.path}
+                onClick={() => onMobileClose?.()}
                 className={`nav-item ${isActive ? 'active' : ''} ${item.premium ? 'premium-feature' : ''}`}
                 title={collapsed ? item.label : ''}
               >
@@ -106,8 +123,35 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
             </motion.div>
           )
         })}
+
+        <div className="nav-footer">
+          <motion.div
+            initial={{ opacity: 0, x: -5 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.35, duration: 0.12 }}
+          >
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="nav-item logout-btn"
+              title={collapsed ? 'Log out' : ''}
+            >
+              <LogOut size={20} />
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, x: -3 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.1, delay: 0.02 }}
+                >
+                  Log out
+                </motion.span>
+              )}
+            </button>
+          </motion.div>
+        </div>
       </nav>
     </motion.aside>
+    </>
   )
 }
 

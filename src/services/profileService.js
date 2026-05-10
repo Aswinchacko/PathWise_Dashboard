@@ -1,7 +1,9 @@
 import axios from 'axios'
 
 // Profile Service for managing user profile data
-const API_BASE_URL = 'http://localhost:5000/api/auth'
+import { apiUrl } from '../config/apiBase'
+
+const API_BASE_URL = apiUrl('/api/auth')
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -313,6 +313,12 @@
   font-size: 12px;
 }
 
+.premium-paypal-wrap {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .premium-modal {

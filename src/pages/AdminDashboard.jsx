@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import UserManagement from './admin/UserManagement'
 import SystemHealth from './admin/SystemHealth'
-import Analytics from './admin/Analytics'
 import ActivityLogs from './admin/ActivityLogs'
 import AlertModal from '../components/AlertModal'
 import {
@@ -13,7 +11,6 @@ import {
   BarChart3,
   Settings,
   Search,
-  Filter,
   RefreshCw,
   Edit,
   Trash2,
@@ -29,25 +26,43 @@ import {
   Wifi,
   TrendingUp,
   TrendingDown,
-  Eye,
   Calendar,
   Download,
-  Upload,
   MessageSquare,
   FileText,
   Target,
-  Bot,
   ArrowRight,
   LogOut,
-  Plus,
   Mail,
   Info,
-  XCircle
+  XCircle,
+  ChevronRight,
+  LayoutDashboard
 } from 'lucide-react'
+import '../styles/admin-theme.css'
 import './AdminDashboard.css'
 import './admin/UserManagement.css'
 import adminService from '../services/adminService'
 import authService from '../services/authService'
+
+const PAGE_META = {
+  overview: {
+    crumb: 'Overview',
+    subtitle: 'Platform metrics, system pulse, and recent activity'
+  },
+  users: {
+    crumb: 'Users',
+    subtitle: 'Accounts, roles, and access control'
+  },
+  system: {
+    crumb: 'System',
+    subtitle: 'Infrastructure health and service status'
+  },
+  activity: {
+    crumb: 'Activity',
+    subtitle: 'Audit trail and platform events'
+  }
+}
 
 const AdminDashboard = () => {
   const location = useLocation()
@@ -59,10 +74,6 @@ const AdminDashboard = () => {
     if (pathname === '/admin/users') return 'users'
     if (pathname === '/admin/system') return 'system'
     if (pathname === '/admin/activity') return 'activity'
-    if (pathname === '/admin/analytics') return 'analytics'
-    if (pathname === '/admin/content') return 'content'
-    if (pathname === '/admin/discussions') return 'discussions'
-    if (pathname === '/admin/reports') return 'reports'
     return 'overview'
   }
 
@@ -123,14 +134,7 @@ const AdminDashboard = () => {
     lastName: '',
     email: ''
   })
-
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: BarChart3, path: '/admin' },
-    { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
-    { id: 'system', label: 'System Health', icon: Server, path: '/admin/system' },
-    { id: 'activity', label: 'Recent Activity', icon: Activity, path: '/admin/activity' },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp, path: '/admin/analytics' }
-  ]
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     loadInitialData()
@@ -147,9 +151,12 @@ const AdminDashboard = () => {
     }
   }, [activeTab, userSearch, userRole, userStatus, currentPage])
 
-  const loadInitialData = async () => {
+  const loadInitialData = async (opts = {}) => {
+    const silent = Boolean(opts.silent)
     try {
-      setLoading(true)
+      if (!silent) {
+        setLoading(true)
+      }
       setError(null)
 
       const [statsData, healthData, activityData, analyticsData] = await Promise.allSettled([
@@ -187,7 +194,9 @@ const AdminDashboard = () => {
       console.error('Error loading admin data:', error)
       setError('Failed to load admin dashboard data')
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -616,8 +625,13 @@ const AdminDashboard = () => {
     })
   }
 
-  const handleRefresh = () => {
-    loadInitialData()
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await loadInitialData({ silent: true })
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   // Function to refresh activity data after user actions
@@ -688,79 +702,69 @@ const AdminDashboard = () => {
     )
   }
 
+  const meta = PAGE_META[activeTab] || PAGE_META.overview
+
   return (
     <div className="admin-dashboard">
-      {/* Header */}
-      <div className="admin-header">
-        <div className="header-content">
-          <div className="header-left">
-            <div className="logo-section">
-              <Shield size={32} />
-              <div className="logo-text">
-                <h1 className="admin-title">Admin Dashboard</h1>
-                <p className="admin-subtitle">Manage users, monitor system health, and view analytics</p>
-              </div>
-            </div>
+      <div className="admin-shell">
+        <header className="admin-topbar">
+          <div className="admin-topbar-left">
+            <nav className="admin-breadcrumb" aria-label="Breadcrumb">
+              <LayoutDashboard size={16} className="admin-breadcrumb-icon" aria-hidden />
+              <span className="bc-root">Admin</span>
+              <ChevronRight size={14} className="admin-breadcrumb-sep" aria-hidden />
+              <span className="bc-current">{meta.crumb}</span>
+            </nav>
+            <p className="admin-topbar-subtitle">{meta.subtitle}</p>
           </div>
-          <div className="header-center">
+          <div className="admin-topbar-right">
             {error && (
-              <div className="error-indicator" title={error}>
-                <AlertTriangle size={16} />
-                <span>Some services unavailable</span>
+              <div className="admin-topbar-pill admin-topbar-pill--warn" title={error}>
+                <AlertTriangle size={14} />
+                <span>Partial load</span>
               </div>
             )}
-          </div>
-          <div className="header-right">
-            <div className="user-info">
-              <div className="user-avatar">
+            <button
+              type="button"
+              className="admin-icon-btn"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Refresh data"
+            >
+              <RefreshCw size={18} className={refreshing ? 'spinning' : ''} />
+            </button>
+            <div className="admin-topbar-user">
+              <div className="admin-topbar-avatar">
                 {authService.getCurrentUser()?.firstName?.[0] || 'A'}
                 {authService.getCurrentUser()?.lastName?.[0] || 'D'}
               </div>
-              <div className="user-details">
-                <span className="user-name">
-                  {authService.getCurrentUser()?.firstName || 'Admin'} {authService.getCurrentUser()?.lastName || 'User'}
+              <div className="admin-topbar-user-text">
+                <span className="admin-topbar-name">
+                  {authService.getCurrentUser()?.firstName || 'Admin'}{' '}
+                  {authService.getCurrentUser()?.lastName || 'User'}
                 </span>
-                <span className="user-role">Administrator</span>
+                <span className="admin-topbar-role">Administrator</span>
               </div>
             </div>
-            <button 
-              className="logout-btn"
+            <button
+              type="button"
+              className="admin-icon-btn admin-icon-btn--danger"
               onClick={handleLogout}
-              title="Logout"
+              title="Log out"
             >
-              <LogOut size={20} />
-              Logout
+              <LogOut size={18} />
             </button>
           </div>
-        </div>
-      </div>
+        </header>
 
-      {/* Navigation Tabs */}
-      <div className="admin-tabs">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.id}
-              className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => navigate(tab.path)}
-            >
-              <Icon size={20} />
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
+        {error && (
+          <div className="error-banner">
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
 
-      {error && (
-        <div className="error-banner">
-          <AlertTriangle size={20} />
-          {error}
-        </div>
-      )}
-
-      {/* Tab Content */}
-      <div className="admin-content">
+        <div className="admin-content">
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <motion.div
@@ -910,37 +914,14 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Analytics Cluster */}
-                  <div className="cluster-item analytics-cluster">
-                    <div className="cluster-header">
-                      <div className="cluster-icon analytics-icon">
-                        <BarChart3 size={24} />
-                      </div>
-                      <div className="cluster-info">
-                        <h3>Analytics</h3>
-                        <span className="cluster-meta">{stats?.discussions?.total || 0} discussions tracked</span>
-                      </div>
-                    </div>
-                    <div className="cluster-actions">
-                      <button className="cluster-btn tertiary" onClick={() => navigate('/admin/analytics')}>
-                        <TrendingUp size={16} />
-                        View Reports
-                      </button>
-                      <button className="cluster-btn outline" onClick={() => navigate('/admin/analytics')}>
-                        <Eye size={16} />
-                        Insights
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Content & Activity Cluster */}
+                  {/* Activity Cluster */}
                   <div className="cluster-item activity-cluster">
                     <div className="cluster-header">
                       <div className="cluster-icon activity-icon">
                         <MessageSquare size={24} />
                       </div>
                       <div className="cluster-info">
-                        <h3>Content & Activity</h3>
+                        <h3>Activity</h3>
                         <span className="cluster-meta">{recentActivity?.length || 0} recent activities</span>
                       </div>
                     </div>
@@ -948,10 +929,6 @@ const AdminDashboard = () => {
                       <button className="cluster-btn quaternary" onClick={() => navigate('/admin/activity')}>
                         <Activity size={16} />
                         Activity Logs
-                      </button>
-                      <button className="cluster-btn outline" onClick={() => navigate('/admin/content')}>
-                        <FileText size={16} />
-                        Content
                       </button>
                     </div>
                   </div>
@@ -1560,8 +1537,7 @@ const AdminDashboard = () => {
         {/* Recent Activity Tab */}
         {activeTab === 'activity' && <ActivityLogs />}
 
-        {/* Analytics Tab */}
-        {activeTab === 'analytics' && <Analytics />}
+        </div>
       </div>
 
       {/* Logout Modal */}

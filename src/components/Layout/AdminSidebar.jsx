@@ -1,40 +1,30 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   Menu, 
   Shield, 
   Users, 
   Activity, 
-  BarChart3, 
   Settings,
-  Database,
   Server,
-  AlertTriangle,
-  FileText,
-  MessageSquare,
   Target,
   Briefcase,
   Upload,
   Globe,
   Home,
-  LogOut
+  LogOut,
+  Eye
 } from 'lucide-react'
 import './Sidebar.css'
 import './AdminSidebar.css'
 import authService from '../../services/authService'
 
 const AdminSidebar = ({ collapsed, setCollapsed }) => {
-  const location = useLocation()
-
   const adminNavItems = [
     { path: '/admin', icon: Shield, label: 'Admin Dashboard' },
     { path: '/admin/users', icon: Users, label: 'User Management' },
     { path: '/admin/system', icon: Server, label: 'System Health' },
     { path: '/admin/activity', icon: Activity, label: 'Activity Logs' },
-    { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
-    { path: '/admin/content', icon: FileText, label: 'Content Management' },
-    { path: '/admin/discussions', icon: MessageSquare, label: 'Discussions' },
-    { path: '/admin/reports', icon: AlertTriangle, label: 'Reports' },
   ]
 
   const userNavItems = [
@@ -104,8 +94,7 @@ const AdminSidebar = ({ collapsed, setCollapsed }) => {
 
         {adminNavItems.map((item, index) => {
           const Icon = item.icon
-          const isActive = location.pathname === item.path
-          
+
           return (
             <motion.div
               key={item.path}
@@ -115,7 +104,10 @@ const AdminSidebar = ({ collapsed, setCollapsed }) => {
             >
               <NavLink
                 to={item.path}
-                className={`nav-item admin-nav-item ${isActive ? 'active' : ''}`}
+                end={item.path === '/admin'}
+                className={({ isActive }) =>
+                  `nav-item admin-nav-item${isActive ? ' active' : ''}`
+                }
                 title={collapsed ? item.label : ''}
               >
                 <Icon size={20} />
@@ -157,8 +149,7 @@ const AdminSidebar = ({ collapsed, setCollapsed }) => {
 
         {userNavItems.map((item, index) => {
           const Icon = item.icon
-          const isActive = location.pathname === item.path
-          
+
           return (
             <motion.div
               key={item.path}
@@ -168,7 +159,10 @@ const AdminSidebar = ({ collapsed, setCollapsed }) => {
             >
               <NavLink
                 to={item.path}
-                className={`nav-item user-nav-item ${isActive ? 'active' : ''} ${item.path === '/dashboard' ? 'switch-view' : ''}`}
+                end={item.path === '/dashboard'}
+                className={({ isActive }) =>
+                  `nav-item user-nav-item${isActive ? ' active' : ''}${item.path === '/dashboard' ? ' switch-view' : ''}`
+                }
                 title={collapsed ? item.label : item.description || item.label}
               >
                 <Icon size={20} />
@@ -182,7 +176,7 @@ const AdminSidebar = ({ collapsed, setCollapsed }) => {
                   </motion.span>
                 )}
                 {!collapsed && item.path === '/dashboard' && (
-                  <span className="switch-indicator">👁️</span>
+                  <Eye size={14} className="switch-indicator" aria-hidden />
                 )}
               </NavLink>
             </motion.div>
@@ -198,7 +192,7 @@ const AdminSidebar = ({ collapsed, setCollapsed }) => {
           >
             <NavLink
               to="/settings"
-              className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               title={collapsed ? 'Settings' : ''}
             >
               <Settings size={20} />

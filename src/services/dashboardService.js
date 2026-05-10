@@ -1,10 +1,6 @@
-// Dashboard Service - Fetches real data from all PathWise APIs
-const API_BASE_URLS = {
-  roadmap: 'http://localhost:8000/api/roadmap',
-  chatbot: 'http://localhost:8001/api/chatbot',
-  resume: 'http://localhost:8002/api/resume',
-  auth: 'http://localhost:5000/api/auth'
-}
+import { apiUrl } from '../config/apiBase'
+
+// Dashboard Service — all paths go through nginx (`docker compose`) or Vite `/api` proxy
 
 class DashboardService {
   constructor() {
@@ -62,7 +58,7 @@ class DashboardService {
     return this.getCachedData('dashboard-stats', async () => {
       try {
         // Fetch analytics data from roadmap API
-        const analyticsData = await this.apiCall(`${API_BASE_URLS.roadmap}/analytics/overview`)
+        const analyticsData = await this.apiCall(`${apiUrl('/api/roadmap')}/analytics/overview`)
         
         // Fetch real user and discussion stats from auth API (same as admin dashboard)
         let userStats = { total: 0, active: 0, newThisMonth: 0 }
@@ -147,7 +143,7 @@ class DashboardService {
   // Get roadmap statistics
   async getRoadmapStats() {
     try {
-      const data = await this.apiCall(`${API_BASE_URLS.roadmap}/roadmaps/all?limit=1000`)
+      const data = await this.apiCall(`${apiUrl('/api/roadmap')}/roadmaps/all?limit=1000`)
       return {
         totalRoadmaps: data.total || 0,
         userGeneratedRoadmaps: data.roadmaps?.filter(r => r.source === 'user_generated').length || 0,
@@ -165,7 +161,7 @@ class DashboardService {
     try {
       // Since we don't have a direct user count endpoint, we'll estimate
       // based on unique user_ids in roadmaps
-      const roadmapData = await this.apiCall(`${API_BASE_URLS.roadmap}/roadmaps/all?limit=1000`)
+      const roadmapData = await this.apiCall(`${apiUrl('/api/roadmap')}/roadmaps/all?limit=1000`)
       const uniqueUsers = new Set(roadmapData.roadmaps?.map(r => r.user_id).filter(Boolean) || [])
       
       return {
@@ -184,7 +180,7 @@ class DashboardService {
     try {
       // Since chatbot service doesn't have stats endpoint, we'll estimate
       // based on roadmap generation activity
-      const roadmapData = await this.apiCall(`${API_BASE_URLS.roadmap}/roadmaps/all?limit=1000`)
+      const roadmapData = await this.apiCall(`${apiUrl('/api/roadmap')}/roadmaps/all?limit=1000`)
       const userGeneratedRoadmaps = roadmapData.roadmaps?.filter(r => r.source === 'user_generated') || []
       
       return {
@@ -203,7 +199,7 @@ class DashboardService {
     try {
       // Since resume parser doesn't have stats endpoint, we'll estimate
       // based on user activity
-      const roadmapData = await this.apiCall(`${API_BASE_URLS.roadmap}/roadmaps/all?limit=1000`)
+      const roadmapData = await this.apiCall(`${apiUrl('/api/roadmap')}/roadmaps/all?limit=1000`)
       const userGeneratedRoadmaps = roadmapData.roadmaps?.filter(r => r.source === 'user_generated') || []
       
       return {
@@ -221,7 +217,7 @@ class DashboardService {
   async getRecentActivity() {
     return this.getCachedData('recent-activity', async () => {
       try {
-        const roadmapData = await this.apiCall(`${API_BASE_URLS.roadmap}/roadmaps/all?limit=10`)
+        const roadmapData = await this.apiCall(`${apiUrl('/api/roadmap')}/roadmaps/all?limit=10`)
         const activities = roadmapData.roadmaps?.map(roadmap => ({
           id: roadmap._id,
           type: 'roadmap',
@@ -244,10 +240,10 @@ class DashboardService {
   async getSystemStatus() {
     return this.getCachedData('system-status', async () => {
       const services = [
-        { name: 'Auth Service', url: `${API_BASE_URLS.auth}/api/health` },
-        { name: 'Roadmap API', url: `${API_BASE_URLS.roadmap}/health` },
-        { name: 'Chatbot Service', url: `${API_BASE_URLS.chatbot}/health` },
-        { name: 'Resume Parser', url: `${API_BASE_URLS.resume}/health` }
+        { name: 'Auth Service', url: apiUrl('/api/health') },
+        { name: 'Roadmap API', url: apiUrl('/api/roadmap/health') },
+        { name: 'Chatbot Service', url: `${apiUrl('/api/chatbot')}/health` },
+        { name: 'Resume Parser', url: `${apiUrl('/api/resume')}/health` },
       ]
 
       const statusChecks = await Promise.allSettled(
@@ -275,7 +271,7 @@ class DashboardService {
   async getRoadmapDomains() {
     return this.getCachedData('roadmap-domains', async () => {
       try {
-        const data = await this.apiCall(`${API_BASE_URLS.roadmap}/roadmaps/domains`)
+        const data = await this.apiCall(`${apiUrl('/api/roadmap')}/roadmaps/domains`)
         return data.domains || []
       } catch (error) {
         console.error('Error fetching roadmap domains:', error)
@@ -287,7 +283,7 @@ class DashboardService {
   // Get user roadmaps
   async getUserRoadmaps(userId) {
     try {
-      const data = await this.apiCall(`${API_BASE_URLS.roadmap}/roadmaps/user/${userId}`)
+      const data = await this.apiCall(`${apiUrl('/api/roadmap')}/roadmaps/user/${userId}`)
       return data.roadmaps || []
     } catch (error) {
       console.error('Error fetching user roadmaps:', error)
@@ -310,7 +306,7 @@ class DashboardService {
   async getAnalyticsTrends(days = 30) {
     return this.getCachedData(`analytics-trends-${days}`, async () => {
       try {
-        const data = await this.apiCall(`${API_BASE_URLS.roadmap}/analytics/trends?days=${days}`)
+        const data = await this.apiCall(`${apiUrl('/api/roadmap')}/analytics/trends?days=${days}`)
         return data
       } catch (error) {
         console.error('Error fetching analytics trends:', error)
@@ -329,7 +325,7 @@ class DashboardService {
   async getDomainAnalytics() {
     return this.getCachedData('domain-analytics', async () => {
       try {
-        const data = await this.apiCall(`${API_BASE_URLS.roadmap}/analytics/domains`)
+        const data = await this.apiCall(`${apiUrl('/api/roadmap')}/analytics/domains`)
         return data
       } catch (error) {
         console.error('Error fetching domain analytics:', error)
@@ -349,7 +345,7 @@ class DashboardService {
       throw new Error('No authentication token found')
     }
 
-    const response = await fetch(`${API_BASE_URLS.auth}/admin/stats`, {
+    const response = await fetch(`${apiUrl('/api/admin')}/stats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

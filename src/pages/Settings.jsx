@@ -53,41 +53,53 @@ const Settings = () => {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [subscriptionLoading, setSubscriptionLoading] = useState(false)
 
-  // Initialize component and check authentication
+  // Ensure JWT + user row in localStorage (ProtectedRoute only checks token — token-without-user used to bounce /login → /dashboard)
   useEffect(() => {
-    const initializeComponent = async () => {
-      // Check if user is authenticated
-      const user = authService.getCurrentUser()
-      const token = authService.getToken()
+    let cancelled = false
 
-      if (!user || !token) {
-        console.warn('User not authenticated, redirecting to login')
+    const boot = async () => {
+      const token = authService.getToken()
+      if (!token) {
+        navigate('/login')
+        return
+      }
+
+      let user = authService.getCurrentUser()
+      if (!user?.id) {
+        try {
+          const body = await authService.getProfile()
+          const u = body?.user
+          if (u?.id) {
+            user = {
+              id: u.id,
+              firstName: u.firstName,
+              lastName: u.lastName,
+              email: u.email,
+              role: u.role,
+              isAdmin: u.isAdmin,
+              lastLogin: u.lastLogin,
+            }
+            localStorage.setItem('user', JSON.stringify(user))
+          }
+        } catch (e) {
+          console.warn('Settings: could not hydrate user from profile', e)
+        }
+      }
+
+      if (cancelled) return
+      if (!user?.id) {
         navigate('/login')
         return
       }
 
       setCurrentUser(user)
-      await Promise.all([
-        loadResumes(),
-        loadProfile(),
-        loadSubscriptionInfo()
-      ])
-      setIsInitialized(true)
     }
 
-    initializeComponent()
-  }, [])
-
-  // Auto-refresh data every 30 seconds to keep it in sync
-  useEffect(() => {
-    if (!isInitialized) return
-
-    const interval = setInterval(() => {
-      loadProfile()
-    }, 30000)
-
-    return () => clearInterval(interval)
-  }, [isInitialized])
+    boot()
+    return () => {
+      cancelled = true
+    }
+  }, [navigate])
 
   const loadResumes = useCallback(async () => {
     if (!currentUser?.id) return
@@ -230,6 +242,34 @@ const Settings = () => {
       })
     }
   }, [currentUser?.id])
+
+  // Load data after currentUser is set (must run after loadResumes/loadProfile/loadSubscriptionInfo exist)
+  useEffect(() => {
+    if (!currentUser?.id) return
+
+    let cancelled = false
+
+    const load = async () => {
+      await Promise.all([loadResumes(), loadProfile(), loadSubscriptionInfo()])
+      if (!cancelled) setIsInitialized(true)
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser?.id, loadResumes, loadProfile, loadSubscriptionInfo])
+
+  // Auto-refresh profile periodically
+  useEffect(() => {
+    if (!isInitialized) return
+
+    const interval = setInterval(() => {
+      loadProfile()
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [isInitialized, loadProfile])
 
   const handleCancelSubscription = async () => {
     if (!currentUser?.id || !subscriptionInfo?.subscription || subscriptionInfo.subscription.plan === 'free') {

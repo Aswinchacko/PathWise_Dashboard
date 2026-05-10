@@ -1,9 +1,10 @@
 import axios from 'axios';
 import authService from './authService';
+import { apiUrl } from '../config/apiBase';
 
-// Use VITE_MICROLEARNING_API_URL in dashboard/.env; default matches common local run on 8007
+// Override only if micro-learning is hosted outside the main API gateway
 const API_URL =
-  import.meta.env.VITE_MICROLEARNING_API_URL || 'http://localhost:8007/api/v1/microlearning';
+  import.meta.env.VITE_MICROLEARNING_API_URL || apiUrl('/api/v1/microlearning');
 
 /**
  * Same shape as roadmap_api.initialize_microlearning() so IDs match (m_0, m_1, …).

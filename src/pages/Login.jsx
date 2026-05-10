@@ -1,33 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  ArrowRight, 
-  AlertCircle,
-  CheckCircle
-} from 'lucide-react'
+import { User, Lock, ArrowRight, AlertCircle, CheckCircle, Eye, EyeOff, Check } from 'lucide-react'
 import authService from '../services/authService'
 import './Login.css'
-import React from 'react'
 
 const Login = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: false
+    rememberMe: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState({})
   const [isSuccess, setIsSuccess] = useState(false)
 
-  // Redirect if already authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (authService.isAuthenticated()) {
       if (authService.isAdmin()) {
         navigate('/admin')
@@ -37,68 +27,14 @@ const Login = () => {
     }
   }, [navigate])
 
-  // Initialize Google Sign-In
-  useEffect(() => {
-    // Load Google Sign-In script
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.defer = true
-    document.head.appendChild(script)
-
-    script.onload = () => {
-      if (window.google && window.google.accounts) {
-        try {
-          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-          
-          if (!clientId || clientId === 'your_google_client_id_here') {
-            console.error('Google Client ID not configured. Please set VITE_GOOGLE_CLIENT_ID in .env file')
-            return
-          }
-          
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleGoogleSignIn
-          })
-          
-          // Only render button if the element exists
-          const buttonElement = document.getElementById('google-signin-button')
-          if (buttonElement) {
-            window.google.accounts.id.renderButton(buttonElement, { 
-              theme: 'outline', 
-              size: 'large',
-              text: 'signin_with',
-              shape: 'rectangular',
-              width: '100%'
-            })
-          }
-        } catch (error) {
-          console.error('Google Sign-In initialization error:', error)
-        }
-      }
-    }
-
-    script.onerror = () => {
-      console.error('Failed to load Google Sign-In script')
-    }
-
-    return () => {
-      // Cleanup
-      if (document.head.contains(script)) {
-        document.head.removeChild(script)
-      }
-    }
-  }, [])
-
-  const handleGoogleSignIn = async (response) => {
+  const handleGoogleSignIn = useCallback(async (response) => {
     setIsLoading(true)
     setErrors({})
-    
+
     try {
       const result = await authService.googleLogin(response.credential)
       setIsSuccess(true)
-      
-      // Check if user is admin and redirect accordingly
+
       setTimeout(() => {
         if (result.user.isAdmin) {
           navigate('/admin')
@@ -108,116 +44,141 @@ const Login = () => {
       }, 1000)
     } catch (error) {
       console.error('Google login error:', error)
-      setErrors({ general: error.message || 'Google login failed. Please try again.' })
+      setErrors({
+        general: error.message || 'Google login failed. Please try again.',
+      })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [navigate])
+
+  /** Stable ref so GIS initialize() doesn’t close over a stale handler when Strict Mode re-runs effects */
+  const googleSignInRef = useRef(handleGoogleSignIn)
+  googleSignInRef.current = handleGoogleSignIn
+
+  useEffect(() => {
+    let cancelled = false
+    const SCRIPT_ID = 'google-gsi-client'
+
+    const teardownGoogle = () => {
+      try {
+        window.google?.accounts?.id?.cancel()
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const initGoogleSignIn = () => {
+      if (cancelled || !window.google?.accounts?.id) return
+
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+      if (!clientId || clientId === 'your_google_client_id_here') {
+        console.error('Google Client ID not configured. Please set VITE_GOOGLE_CLIENT_ID in .env file')
+        return
+      }
+
+      teardownGoogle()
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (credentialResponse) => googleSignInRef.current(credentialResponse),
+        })
+
+        const buttonElement = document.getElementById('google-signin-button')
+        if (buttonElement) {
+          buttonElement.innerHTML = ''
+          window.google.accounts.id.renderButton(buttonElement, {
+            theme: 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            width: buttonElement.offsetWidth || 320,
+          })
+        }
+      } catch (error) {
+        console.error('Google Sign-In initialization error:', error)
+      }
+    }
+
+    let script = document.getElementById(SCRIPT_ID)
+    if (!script) {
+      script = document.createElement('script')
+      script.id = SCRIPT_ID
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.defer = true
+      script.onload = () => {
+        if (!cancelled) initGoogleSignIn()
+      }
+      script.onerror = () => {
+        console.error('Failed to load Google Sign-In script')
+      }
+      document.head.appendChild(script)
+    } else if (window.google?.accounts?.id) {
+      initGoogleSignIn()
+    } else {
+      script.addEventListener('load', () => !cancelled && initGoogleSignIn(), { once: true })
+    }
+
+    return () => {
+      cancelled = true
+      teardownGoogle()
+    }
+  }, [])
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
-    
-    // Sanitize input
+
     let sanitizedValue = value
     if (type === 'email') {
       sanitizedValue = value.toLowerCase().trim()
     } else if (type === 'text' || type === 'password') {
       sanitizedValue = value.trim()
     }
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : sanitizedValue
+      [name]: type === 'checkbox' ? checked : sanitizedValue,
     }))
-    
-    // Real-time validation
+
     if (type !== 'checkbox') {
       validateField(name, sanitizedValue)
     }
   }
 
-  // Enhanced validation functions
   const validateEmail = (email) => {
-    // Basic email structure check
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    
-    if (!emailRegex.test(email)) {
-      return false
-    }
-    
-    // Split email into parts
+    if (!emailRegex.test(email)) return false
     const parts = email.split('@')
-    if (parts.length !== 2) {
-      return false
-    }
-    
+    if (parts.length !== 2) return false
     const [localPart, domainPart] = parts
-    
-    // Check local part (before @)
-    if (!localPart || localPart.length === 0) {
-      return false
-    }
-    
-    // Check domain part (after @)
-    if (!domainPart || domainPart.length < 4) {
-      return false
-    }
-    
-    // Domain must contain at least one dot
-    if (!domainPart.includes('.')) {
-      return false
-    }
-    
-    // Split domain by dots
+    if (!localPart || localPart.length === 0) return false
+    if (!domainPart || domainPart.length < 4) return false
+    if (!domainPart.includes('.')) return false
     const domainParts = domainPart.split('.')
-    if (domainParts.length < 2) {
-      return false
-    }
-    
-    // TLD (last part) must be at least 2 characters
+    if (domainParts.length < 2) return false
     const tld = domainParts[domainParts.length - 1]
-    if (!tld || tld.length < 2) {
-      return false
-    }
-    
-    // Domain name (before TLD) must be at least 2 characters
+    if (!tld || tld.length < 2) return false
     const domainName = domainParts.slice(0, -1).join('.')
-    if (!domainName || domainName.length < 2) {
-      return false
-    }
-    
-    // Additional check: domain name should contain letters, not just numbers
-    if (!/[a-zA-Z]/.test(domainName)) {
-      return false
-    }
-    
+    if (!domainName || domainName.length < 2) return false
+    if (!/[a-zA-Z]/.test(domainName)) return false
     return true
   }
 
   const validatePassword = (password) => {
-    const errors = []
-    if (password.length < 8) {
-      errors.push('Password must be at least 8 characters long')
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter')
-    }
-    if (!/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter')
-    }
-    if (!/\d/.test(password)) {
-      errors.push('Password must contain at least one number')
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character')
-    }
-    return errors
+    const errs = []
+    if (password.length < 8) errs.push('Password must be at least 8 characters long')
+    if (!/[A-Z]/.test(password)) errs.push('Password must contain at least one uppercase letter')
+    if (!/[a-z]/.test(password)) errs.push('Password must contain at least one lowercase letter')
+    if (!/\d/.test(password)) errs.push('Password must contain at least one number')
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errs.push('Password must contain at least one special character')
+    return errs
   }
 
   const validateForm = () => {
     const newErrors = {}
-    
-    // Email validation
+
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
     } else if (!validateEmail(formData.email)) {
@@ -225,25 +186,21 @@ const Login = () => {
     } else if (formData.email.length > 254) {
       newErrors.email = 'Email address is too long'
     }
-    
-    // Password validation
+
     if (!formData.password) {
       newErrors.password = 'Password is required'
     } else {
       const passwordErrors = validatePassword(formData.password)
-      if (passwordErrors.length > 0) {
-        newErrors.password = passwordErrors[0] // Show first error
-      }
+      if (passwordErrors.length > 0) newErrors.password = passwordErrors[0]
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  // Real-time validation
   const validateField = (name, value) => {
     const newErrors = { ...errors }
-    
+
     switch (name) {
       case 'email':
         if (!value.trim()) {
@@ -256,7 +213,6 @@ const Login = () => {
           delete newErrors.email
         }
         break
-        
       case 'password':
         if (!value) {
           newErrors.password = 'Password is required'
@@ -269,27 +225,22 @@ const Login = () => {
           }
         }
         break
-        
       default:
         break
     }
-    
+
     setErrors(newErrors)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
     if (!validateForm()) return
-    
+
     setIsLoading(true)
     setErrors({})
-    
     try {
       const result = await authService.login(formData.email, formData.password)
       setIsSuccess(true)
-      
-      // Check if user is admin and redirect accordingly
       setTimeout(() => {
         if (result.user.isAdmin) {
           navigate('/admin')
@@ -305,261 +256,176 @@ const Login = () => {
     }
   }
 
-
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        {/* Left Side - Form */}
-        <motion.div 
-          className="auth-form-section"
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
+    <div className="login-page">
+      <div className="login-page__content">
+        <motion.section
+          className="login-container"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="form-header">
-            <motion.div 
-              className="logo-section"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h1>Welcome Back</h1>
-              <p>Sign in to continue your learning journey</p>
-            </motion.div>
-          </div>
+          <div className="login-form-section">
+            <div className="login-card__header">
+              <h1 className="login-card__title">Welcome Back</h1>
+              <p className="login-card__subtitle">Sign in to continue your PathWise journey</p>
+            </div>
 
-          <motion.form 
-            className="auth-form"
-            onSubmit={handleSubmit}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            {isSuccess && (
-              <motion.div 
-                className="success-message"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-              >
-                <CheckCircle size={20} />
-                <span>Login successful! Redirecting...</span>
-              </motion.div>
-            )}
+            <form className="login-form" onSubmit={handleSubmit} noValidate>
+              {isSuccess && (
+                <motion.div className="login-banner login-banner--success" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}>
+                  <CheckCircle size={18} />
+                  <span>Login successful! Redirecting…</span>
+                </motion.div>
+              )}
 
-            {errors.general && (
-              <motion.div 
-                className="error-message general-error"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <AlertCircle size={16} />
-                {errors.general}
-              </motion.div>
-            )}
-
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <div className="input-wrapper">
-                <Mail size={20} className="input-icon" />
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="Enter your email"
-                  className={errors.email ? 'error' : ''}
-                  disabled={isLoading}
-                  autoComplete="email"
-                  maxLength={254}
-                />
-              </div>
-              {errors.email && (
-                <motion.div 
-                  className="error-message"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
+              {errors.general && (
+                <motion.div className="login-banner login-banner--error" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
                   <AlertCircle size={16} />
-                  {errors.email}
+                  {errors.general}
                 </motion.div>
               )}
-            </div>
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <div className="input-wrapper">
-                <Lock size={20} className="input-icon" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Enter your password"
-                  className={errors.password ? 'error' : ''}
-                  disabled={isLoading}
-                  autoComplete="current-password"
-                  maxLength={128}
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.password && (
-                <motion.div 
-                  className="error-message"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <AlertCircle size={16} />
-                  {errors.password}
-                </motion.div>
-              )}
-              
-              {/* Password requirements hint */}
-              {formData.password && !errors.password && (
-                <motion.div 
-                  className="password-hint"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <CheckCircle size={16} />
-                  <span>Password looks good!</span>
-                </motion.div>
-              )}
-            </div>
-
-            <div className="form-options">
-              <label className="checkbox-wrapper">
-                <input
-                  type="checkbox"
-                  name="rememberMe"
-                  checked={formData.rememberMe}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                />
-                <span className="checkmark"></span>
-                Remember me
-              </label>
-              <Link to="/forgot-password" className="forgot-link">
-                Forgot password?
-              </Link>
-            </div>
-
-            <motion.button
-              type="submit"
-              className="submit-btn"
-              disabled={isLoading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {isLoading ? (
-                <div className="loading-spinner"></div>
-              ) : (
-                <>
-                  Sign In
-                  <ArrowRight size={20} />
-                </>
-              )}
-            </motion.button>
-
-            <div className="divider">
-              <span>or continue with</span>
-            </div>
-
-            {/* Google Sign-In Button */}
-            <div className="google-signin-container">
-              <div id="google-signin-button"></div>
-              {(!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID === 'your_google_client_id_here') && (
-                <div className="google-auth-disabled">
-                  <p>Google Sign-In is not configured</p>
+              <div className="form-group">
+                <label htmlFor="email">Email Address</label>
+                <div className="input-wrapper">
+                  <User size={20} className="input-icon" aria-hidden />
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    className={errors.email ? 'error' : ''}
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                    autoComplete="email"
+                    maxLength={254}
+                  />
                 </div>
-              )}
-            </div>
+                {errors.email && (
+                  <div className="error-message">
+                    <AlertCircle size={14} />
+                    {errors.email}
+                  </div>
+                )}
+              </div>
 
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <div className="input-wrapper input-wrapper--password">
+                  <Lock size={20} className="input-icon" aria-hidden />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    className={errors.password ? 'error' : ''}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                    autoComplete="current-password"
+                    maxLength={128}
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <div className="error-message">
+                    <AlertCircle size={14} />
+                    {errors.password}
+                  </div>
+                )}
+                {formData.password && !errors.password && (
+                  <div className="field-hint">
+                    <CheckCircle size={14} />
+                    <span>Password looks good!</span>
+                  </div>
+                )}
+              </div>
 
-            <div className="auth-footer">
-              <p>
-                Don't have an account?{' '}
-                <Link to="/register" className="link-primary">
-                  Sign up
+              <div className="login-row">
+                <label className="login-remember">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                  />
+                  <span className="login-remember__text">Remember me</span>
+                </label>
+                <Link to="/forgot-password" className="login-link-muted">
+                  Forgot Password?
+                </Link>
+              </div>
+
+              <button type="submit" className="login-submit" disabled={isLoading}>
+                {isLoading ? (
+                  <span className="login-submit__spinner" aria-hidden />
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="login-submit__arrow" size={20} />
+                  </>
+                )}
+              </button>
+
+              <div className="login-divider">
+                <span className="login-divider__line" />
+                <span className="login-divider__text">OR CONTINUE WITH</span>
+                <span className="login-divider__line" />
+              </div>
+
+              <div className="login-google-shell">
+                <div id="google-signin-button" className="login-google-mount" />
+                {(!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID === 'your_google_client_id_here') && (
+                  <p className="login-google-fallback">Google Sign-In is not configured</p>
+                )}
+              </div>
+
+              <p className="login-footer">
+                Don&apos;t have an account?{' '}
+                <Link to="/register" className="login-footer__link">
+                  Sign Up
                 </Link>
               </p>
-            </div>
-          </motion.form>
-        </motion.div>
+            </form>
+          </div>
 
-        {/* Right Side - Hero */}
-        <motion.div 
-          className="auth-hero"
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          <div className="hero-content">
-            <div className="hero-badge">
-              <span>🚀</span>
-              <span>Career Development Platform</span>
+          <div className="login-hero">
+            <div className="login-hero__badge">
+              <span>🎯</span>
+              <span>PathWise Access</span>
             </div>
-            
-            <h2>Accelerate Your Career Growth</h2>
-            <p>
-              Join thousands of professionals who are advancing their careers 
-              with personalized learning paths, expert mentorship, and real-world projects.
-            </p>
-            
-            <div className="hero-stats">
-              <div className="stat">
-                <span className="stat-number">10K+</span>
-                <span className="stat-label">Active Learners</span>
+            <h2>Continue Your Learning Journey</h2>
+            <p>Access your roadmap, mentors, and projects in one place with your personalized dashboard.</p>
+            <div className="login-hero__benefits">
+              <div className="login-hero__benefit">
+                <Check size={18} />
+                <span>Track roadmap milestones</span>
               </div>
-              <div className="stat">
-                <span className="stat-number">500+</span>
-                <span className="stat-label">Expert Mentors</span>
+              <div className="login-hero__benefit">
+                <Check size={18} />
+                <span>Connect with expert mentors</span>
               </div>
-              <div className="stat">
-                <span className="stat-number">95%</span>
-                <span className="stat-label">Success Rate</span>
+              <div className="login-hero__benefit">
+                <Check size={18} />
+                <span>Build job-ready projects</span>
               </div>
             </div>
           </div>
-          
-          <div className="hero-visual">
-            <div className="floating-card card-1">
-              <div className="card-icon">📚</div>
-              <div className="card-content">
-                <h4>Personalized Learning</h4>
-                <p>AI-driven curriculum tailored to your goals</p>
-              </div>
-            </div>
-            
-            <div className="floating-card card-2">
-              <div className="card-icon">🎯</div>
-              <div className="card-content">
-                <h4>Project-Based</h4>
-                <p>Build real-world projects for your portfolio</p>
-              </div>
-            </div>
-            
-            <div className="floating-card card-3">
-              <div className="card-icon">👥</div>
-              <div className="card-content">
-                <h4>Expert Mentorship</h4>
-                <p>Connect with industry professionals</p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        </motion.section>
       </div>
     </div>
   )
 }
 
-export default Login 
+export default Login
